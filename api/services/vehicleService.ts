@@ -1,7 +1,7 @@
-import BASE_URL from "../core/api";
+import {BASE_URL} from "../settings";
 
 export async function getVehicles() {
-  const response = await fetch(`${BASE_URL}/api/vehicles`);
+  const response = await fetch(`${BASE_URL}/vehicles`);
 
   if (!response.ok) {
     throw new Error("Araçlar alınamadı.");
