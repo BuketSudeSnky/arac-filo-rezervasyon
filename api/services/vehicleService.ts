@@ -1,7 +1,16 @@
 export const BASE_URL = "http://localhost:8080/api";
 
+export interface Vehicle {
+  id: number;
+  licensePlate: string;
+  makeModel: string;
+  type: string;
+  status: string;
+}
 
-export async function getVehicles() {
+export type VehicleRequest = Omit<Vehicle, "id">;
+
+export async function getVehicles(): Promise<Vehicle[]> {
   const response = await fetch(`${BASE_URL}/vehicles`);
 
   if (!response.ok) {
@@ -11,35 +20,46 @@ export async function getVehicles() {
   return response.json();
 }
 
-export async function createVehicle(vehicle: any) {   /* any de sıkıntı var ama şuanlık bu sıkıntı değil */ 
-    const response = await fetch(`${BASE_URL}/vehicles`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify(vehicle),
-    });
+export async function createVehicle(
+  vehicle: VehicleRequest
+): Promise<Vehicle> {
+  const response = await fetch(`${BASE_URL}/vehicles`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(vehicle),
+  });
 
-    if (!response.ok) {
-        throw new Error("Araç eklenemedi.");
-    }
+  if (!response.ok) {
+    throw new Error("Araç eklenemedi.");
+  }
 
-    return response.json();
+  return response.json();
 }
 
-
-export async function deleteVehicle(id: number) {
+export async function deleteVehicle(id: number): Promise<void> {
   const response = await fetch(`${BASE_URL}/vehicles/${id}`, {
     method: "DELETE",
   });
 
   if (!response.ok) {
-    throw new Error("Araç silinemedi.");
+    let message = "Araç silinemedi.";
+
+    try {
+      const data = await response.json();
+      message = data.message || message;
+    } catch {
+      // Backend JSON dönmezse varsayılan mesaj kullanılır.
+    }
+
+    throw new Error(message);
   }
 }
 
-
-export async function getVehicleById(id: number) {
+export async function getVehicleById(
+  id: number
+): Promise<Vehicle> {
   const response = await fetch(`${BASE_URL}/vehicles/${id}`);
 
   if (!response.ok) {
@@ -51,13 +71,8 @@ export async function getVehicleById(id: number) {
 
 export async function updateVehicle(
   id: number,
-  vehicle: {
-    licensePlate: string;
-    makeModel: string;
-    type: string;
-    status: string;
-  }
-) {
+  vehicle: VehicleRequest
+): Promise<Vehicle> {
   const response = await fetch(`${BASE_URL}/vehicles/${id}`, {
     method: "PUT",
     headers: {

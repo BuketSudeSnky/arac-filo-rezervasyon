@@ -1,4 +1,5 @@
 import { BASE_URL } from "./vehicleService";
+import type { Vehicle } from "./vehicleService";
 
 export type ReservationStatus =
   | "Planned"
@@ -6,42 +7,38 @@ export type ReservationStatus =
   | "Completed"
   | "Cancelled";
 
-export type ReservationRequest = {
-  vehicle: {
-    id: number;
-  };
-  username: string;
-  startDate: string;
-  endDate: string;
-  purpose: string;
-  status: ReservationStatus;
-};
-
-export type Reservation = {
+export interface Reservation {
   id: number;
-  vehicle: {
-    id: number;
-    licensePlate?: string;
-    makeModel?: string;
-  };
+  vehicle: Vehicle;
   username: string;
   startDate: string;
   endDate: string;
   purpose: string;
   status: ReservationStatus;
   createdAt: string;
-};
+}
 
-async function getErrorMessage(response: Response) {
+export interface ReservationRequest {
+  vehicle: {
+    id: number;
+  };
+  username: string;
+  startDate: string;
+  endDate: string;
+  purpose: string;
+  status: ReservationStatus;
+}
+
+async function getErrorMessage(response: Response): Promise<string> {
   try {
     const data = await response.json();
+
     return data.message || "İşlem başarısız.";
   } catch {
     return "İşlem başarısız.";
   }
 }
 
-// Tüm rezervasyonları getir
 export async function getReservations(): Promise<Reservation[]> {
   const response = await fetch(`${BASE_URL}/reservations`);
 
@@ -52,7 +49,6 @@ export async function getReservations(): Promise<Reservation[]> {
   return response.json();
 }
 
-// Yeni rezervasyon oluştur
 export async function createReservation(
   reservation: ReservationRequest
 ): Promise<Reservation> {
@@ -71,7 +67,6 @@ export async function createReservation(
   return response.json();
 }
 
-// Rezervasyon durumunu güncelle
 export async function updateReservationStatus(
   id: number,
   status: ReservationStatus
@@ -94,7 +89,6 @@ export async function updateReservationStatus(
   return response.json();
 }
 
-// Rezervasyonu iptal et
 export async function cancelReservation(
   id: number
 ): Promise<Reservation> {
