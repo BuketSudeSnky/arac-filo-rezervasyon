@@ -1,110 +1,251 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
-const ARACLAR = [
-  "34 ABC 123 - Ford Focus",
-  "34 XYZ 456 - Fiat Doblo",
-  "06 KLM 789 - Renault Megane",
-];
+import {
+  cancelReservation,
+  getReservations,
+  type Reservation,
+} from "../../api/services/reservationService";
 
+const durumMetinleri = {
+  Planned: "Planlandı",
+  InProgress: "Devam Ediyor",
+  Completed: "Tamamlandı",
+  Cancelled: "İptal Edildi",
+};
 
-export default function RezervasyonPage() {
-    const router = useRouter();
+const durumSiniflari = {
+  Planned: "bg-blue-100 text-blue-700",
+  InProgress: "bg-yellow-100 text-yellow-700",
+  Completed: "bg-green-100 text-green-700",
+  Cancelled: "bg-red-100 text-red-700",
+};
+
+export default function RezervasyonlarPage() {
+  const [rezervasyonlar, setRezervasyonlar] = useState<Reservation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [cancellingId, setCancellingId] = useState<number | null>(null);
+
+  useEffect(() => {
+    const rezervasyonlariGetir = async () => {
+      try {
+        setError("");
+
+        const data = await getReservations();
+
+        setRezervasyonlar(data);
+      } catch (error) {
+        console.error(error);
+
+        if (error instanceof Error) {
+          setError(error.message);
+        } else {
+          setError("Rezervasyonlar alınamadı.");
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    rezervasyonlariGetir();
+  }, []);
+
+  const handleCancel = async (id: number) => {
+    const onay = window.confirm(
+      "Bu rezervasyonu iptal etmek istediğinizden emin misiniz?"
+    );
+
+    if (!onay) {
+      return;
+    }
+
+    try {
+      setCancellingId(id);
+
+      const guncellenenRezervasyon = await cancelReservation(id);
+
+      setRezervasyonlar((oncekiRezervasyonlar) =>
+        oncekiRezervasyonlar.map((rezervasyon) =>
+          rezervasyon.id === id
+            ? guncellenenRezervasyon
+            : rezervasyon
+        )
+      );
+
+      alert("Rezervasyon başarıyla iptal edildi.");
+    } catch (error) {
+      console.error(error);
+
+      if (error instanceof Error) {
+        alert(error.message);
+      } else {
+        alert("Rezervasyon iptal edilemedi.");
+      }
+    } finally {
+      setCancellingId(null);
+    }
+  };
 
   return (
     <main className="min-h-screen bg-[#F2F4F7] py-10">
-      <div className="mx-auto max-w-xl rounded-lg bg-white shadow">
+      <div className="mx-auto max-w-7xl px-6">
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">
+              Rezervasyonlar
+            </h1>
 
-        <div className="border-b p-6">
-          <h1 className="text-2xl font-bold text-center">
-            Yeni Rezervasyon
-          </h1>
+            <p className="mt-2 text-sm text-gray-500">
+              Araç rezervasyonlarını görüntüleyebilir ve
+              yönetebilirsiniz.
+            </p>
+          </div>
+
+          <Link
+            href="/rezervasyon/yeni"
+            className="rounded-md bg-[#0B4EA2] px-5 py-3 font-semibold text-white hover:bg-[#093d7f]"
+          >
+            + Yeni Rezervasyon
+          </Link>
         </div>
 
-        <form className="space-y-5 p-8">
-
-          {/* Araç */}
-          <div className="grid grid-cols-[120px_1fr] items-center gap-4">
-            <label className="font-medium">Araç</label>
-
-            <select className="rounded border px-3 py-2">
-              {ARACLAR.map((arac) => (
-                <option key={arac}>{arac}</option>
-              ))}
-            </select>
+        {loading && (
+          <div className="rounded-lg bg-white p-6 shadow">
+            <p className="text-gray-600">
+              Rezervasyonlar yükleniyor...
+            </p>
           </div>
+        )}
 
-          {/* Kullanıcı */}
-          <div className="grid grid-cols-[120px_1fr] items-center gap-4">
-            <label className="font-medium">Kullanıcı</label>
-
-            <input
-              type="text"
-              placeholder="Ahmet Yılmaz"
-              className="rounded border px-3 py-2"
-            />
+        {error && (
+          <div className="rounded-lg border border-red-300 bg-red-50 p-5 text-red-700">
+            {error}
           </div>
+        )}
 
-          {/* Başlangıç */}
-          <div className="grid grid-cols-[120px_1fr] items-center gap-4">
-            <label className="font-medium">Başlangıç</label>
-
-            <input
-              type="date"
-              className="rounded border px-3 py-2"
-            />
+        {!loading && !error && rezervasyonlar.length === 0 && (
+          <div className="rounded-lg bg-white p-6 shadow">
+            <p className="text-gray-600">
+              Henüz rezervasyon bulunmuyor.
+            </p>
           </div>
+        )}
 
-          {/* Bitiş */}
-          <div className="grid grid-cols-[120px_1fr] items-center gap-4">
-            <label className="font-medium">Bitiş</label>
+        {!loading && !error && rezervasyonlar.length > 0 && (
+          <div className="overflow-x-auto rounded-lg bg-white shadow">
+            <table className="w-full min-w-[1050px] text-left">
+              <thead className="bg-gray-100 text-sm text-gray-700">
+                <tr>
+                  <th className="p-4">Araç</th>
+                  <th className="p-4">Kullanıcı</th>
+                  <th className="p-4">Başlangıç</th>
+                  <th className="p-4">Bitiş</th>
+                  <th className="p-4">Amaç</th>
+                  <th className="p-4">Durum</th>
+                  <th className="p-4">Oluşturulma</th>
+                  <th className="p-4">İşlemler</th>
+                </tr>
+              </thead>
 
-            <input
-              type="date"
-              className="rounded border px-3 py-2"
-            />
+              <tbody>
+                {rezervasyonlar.map((rezervasyon) => {
+                  const iptalEdildi =
+                    rezervasyon.status === "Cancelled";
+
+                  const isCancelling =
+                    cancellingId === rezervasyon.id;
+
+                  return (
+                    <tr
+                      key={rezervasyon.id}
+                      className="border-t align-top hover:bg-gray-50"
+                    >
+                      <td className="p-4">
+                        <p className="font-semibold">
+                          {rezervasyon.vehicle?.makeModel ||
+                            "Araç bilgisi yok"}
+                        </p>
+
+                        <p className="mt-1 text-sm text-gray-500">
+                          {rezervasyon.vehicle?.licensePlate ||
+                            `Araç ID: ${rezervasyon.vehicle?.id}`}
+                        </p>
+                      </td>
+
+                      <td className="p-4">
+                        {rezervasyon.username}
+                      </td>
+
+                      <td className="p-4">
+                        {rezervasyon.startDate}
+                      </td>
+
+                      <td className="p-4">
+                        {rezervasyon.endDate}
+                      </td>
+
+                      <td className="max-w-xs p-4">
+                        <p className="whitespace-pre-wrap">
+                          {rezervasyon.purpose}
+                        </p>
+                      </td>
+
+                      <td className="p-4">
+                        <span
+                          className={`inline-block rounded-full px-3 py-1 text-sm font-semibold ${
+                            durumSiniflari[rezervasyon.status]
+                          }`}
+                        >
+                          {durumMetinleri[rezervasyon.status]}
+                        </span>
+                      </td>
+
+                      <td className="p-4 text-sm text-gray-600">
+                        {rezervasyon.createdAt
+                          ? new Date(
+                              rezervasyon.createdAt
+                            ).toLocaleString("tr-TR")
+                          : "-"}
+                      </td>
+
+                      <td className="p-4">
+                        <div className="flex flex-wrap gap-2">
+                          <Link
+                            href={`/rezervasyon/duzenle?id=${rezervasyon.id}`}
+                            className="rounded-md border border-[#0B4EA2] px-4 py-2 text-sm font-medium text-[#0B4EA2] hover:bg-blue-50"
+                          >
+                            Düzenle
+                          </Link>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleCancel(rezervasyon.id)
+                            }
+                            disabled={
+                              iptalEdildi || isCancelling
+                            }
+                            className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {isCancelling
+                              ? "İptal ediliyor..."
+                              : iptalEdildi
+                                ? "İptal Edildi"
+                                : "İptal Et"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-
-          {/* Amaç */}
-          <div className="grid grid-cols-[120px_1fr] items-start gap-4">
-            <label className="font-medium">Amaç</label>
-
-            <textarea
-              rows={3}
-              placeholder="Rezervasyon amacı..."
-              className="rounded border px-3 py-2"
-            />
-          </div>
-
-          {/* Uyarı */}
-          <div className="rounded-md border border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-800">
-            ⚠️ Seçilen araç bu tarihlerde müsait değilse kullanıcıya uyarı gösterilecektir.
-          </div>
-
-          {/* Butonlar */}
-          <div className="flex justify-center gap-4 pt-4">
-
-            <Link
-              href="/araclar"
-              className="rounded border px-6 py-2 hover:bg-gray-100"
-            >
-              Vazgeç
-            </Link>
-
-            <button
-        type="button"
-        onClick={() => router.push("/rezervasyonlar")}
-        className="rounded bg-[#0B4EA2] px-6 py-2 text-white hover:bg-[#083a79]">
-        Kaydet
-        </button>
-
-          </div>
-
-        </form>
+        )}
       </div>
     </main>
   );
 }
-

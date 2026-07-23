@@ -45,6 +45,17 @@ export default function Navbar() {
         Araçlar
       </Link>
 
+      <Link
+  href="/rezervasyon"
+  className={
+    pathname.startsWith("/rezervasyon")
+      ? "font-semibold text-[#0B4EA2]"
+      : "text-gray-600 hover:text-[#0B4EA2]"
+  }
+>
+  Rezervasyonlar
+</Link>
+
     </nav>
 
   </div>
