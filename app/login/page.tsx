@@ -1,8 +1,11 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function LoginPage() {
+  const router = useRouter();
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#F2F4F7]">
       <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-lg">
@@ -17,7 +20,13 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <form className="space-y-5">
+        <form
+  className="space-y-5"
+  onSubmit={(e) => {
+    e.preventDefault();
+    router.push("/dashboard");
+  }}
+>
           <div>
             <label className="mb-2 block text-sm font-medium">
               Kullanıcı Adı

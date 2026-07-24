@@ -84,13 +84,6 @@ export default function AraclarPage() {
               Araç listesini görüntüleyebilir ve filtreleyebilirsiniz.
             </p>
           </div>
-
-          <Link
-            href="/araclar/yeni"
-            className="rounded-md bg-[#0B4EA2] px-5 py-3 font-semibold text-white hover:bg-[#093d7f]"
-          >
-            + Yeni Araç
-          </Link>
         </div>
 
          {/* Tarih Aralığı */}
