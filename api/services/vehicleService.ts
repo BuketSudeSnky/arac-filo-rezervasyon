@@ -87,3 +87,32 @@ export async function updateVehicle(
 
   return response.json();
 }
+
+export async function getAvailableVehicles(
+  startDate: string,
+  endDate: string
+): Promise<Vehicle[]> {
+  const params = new URLSearchParams({
+    startDate,
+    endDate,
+  });
+
+  const response = await fetch(
+    `${BASE_URL}/vehicles/available?${params.toString()}`
+  );
+
+  if (!response.ok) {
+    let message = "Müsait araçlar alınamadı.";
+
+    try {
+      const data = await response.json();
+      message = data.message || message;
+    } catch {
+      // Varsayılan hata mesajı
+    }
+
+    throw new Error(message);
+  }
+
+  return response.json();
+}

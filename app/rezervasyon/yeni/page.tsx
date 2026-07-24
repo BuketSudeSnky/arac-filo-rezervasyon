@@ -4,19 +4,15 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import { getVehicles } from "../../../api/services/vehicleService";
+import {
+  getAvailableVehicles,
+  type Vehicle,
+} from "../../../api/services/vehicleService";
+
 import {
   createReservation,
   type ReservationRequest,
 } from "../../../api/services/reservationService";
-
-type Vehicle = {
-  id: number;
-  licensePlate: string;
-  makeModel: string;
-  type: string;
-  status: string;
-};
 
 export default function RezervasyonPage() {
   const router = useRouter();
@@ -24,7 +20,10 @@ export default function RezervasyonPage() {
 
   const vehicleIdFromUrl = searchParams.get("vehicleId");
 
-  const [araclar, setAraclar] = useState<Vehicle[]>([]);
+  const [availableVehicles, setAvailableVehicles] = useState<
+    Vehicle[]
+  >([]);
+
   const [vehicleId, setVehicleId] = useState("");
   const [username, setUsername] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -32,51 +31,126 @@ export default function RezervasyonPage() {
   const [purpose, setPurpose] = useState("");
 
   const [loading, setLoading] = useState(false);
-  const [vehiclesLoading, setVehiclesLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [
+    loadingAvailableVehicles,
+    setLoadingAvailableVehicles,
+  ] = useState(false);
+
+  const [availableError, setAvailableError] =
+    useState("");
 
   useEffect(() => {
-    const araclariGetir = async () => {
+    const loadAvailableVehicles = async () => {
+      if (!startDate || !endDate) {
+        setAvailableVehicles([]);
+        setAvailableError("");
+        setVehicleId("");
+        return;
+      }
+
+      if (endDate < startDate) {
+        setAvailableVehicles([]);
+        setAvailableError(
+          "Bitiş tarihi başlangıç tarihinden önce olamaz."
+        );
+        setVehicleId("");
+        return;
+      }
+
       try {
-        const data: Vehicle[] = await getVehicles();
+        setLoadingAvailableVehicles(true);
+        setAvailableError("");
 
-        setAraclar(data);
+        const vehicles = await getAvailableVehicles(
+          startDate,
+          endDate
+        );
 
-        if (vehicleIdFromUrl) {
+        setAvailableVehicles(vehicles);
+
+        if (
+          vehicleIdFromUrl &&
+          vehicles.some(
+            (vehicle) =>
+              String(vehicle.id) === vehicleIdFromUrl
+          )
+        ) {
           setVehicleId(vehicleIdFromUrl);
-        } else if (data.length > 0) {
-          setVehicleId(String(data[0].id));
+        } else {
+          setVehicleId((currentVehicleId) => {
+            const currentVehicleIsAvailable =
+              vehicles.some(
+                (vehicle) =>
+                  String(vehicle.id) === currentVehicleId
+              );
+
+            return currentVehicleIsAvailable
+              ? currentVehicleId
+              : "";
+          });
         }
       } catch (error) {
         console.error(error);
-        setError("Araçlar alınamadı.");
+
+        setAvailableVehicles([]);
+        setVehicleId("");
+
+        if (error instanceof Error) {
+          setAvailableError(error.message);
+        } else {
+          setAvailableError(
+            "Müsait araçlar alınamadı."
+          );
+        }
       } finally {
-        setVehiclesLoading(false);
+        setLoadingAvailableVehicles(false);
       }
     };
 
-    araclariGetir();
-  }, [vehicleIdFromUrl]);
+    loadAvailableVehicles();
+  }, [startDate, endDate, vehicleIdFromUrl]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const isFormValid =
+  username.trim() !== "" &&
+  startDate !== "" &&
+  endDate !== "" &&
+  purpose.trim() !== "" &&
+  vehicleId !== "" &&
+  availableVehicles.length > 0 &&
+  !loading &&
+  !loadingAvailableVehicles &&
+  endDate >= startDate;
+
+  const handleSubmit = async (
+    e: React.FormEvent<HTMLFormElement>
+  ) => {
     e.preventDefault();
 
     if (loading) {
       return;
     }
 
+    if (!startDate || !endDate) {
+      alert(
+        "Lütfen başlangıç ve bitiş tarihlerini seçin."
+      );
+      return;
+    }
+
+    if (endDate < startDate) {
+      alert(
+        "Bitiş tarihi başlangıç tarihinden önce olamaz."
+      );
+      return;
+    }
+
     if (!vehicleId) {
-      alert("Lütfen bir araç seçin.");
+      alert("Lütfen müsait bir araç seçin.");
       return;
     }
 
     if (!username.trim()) {
       alert("Lütfen kullanıcı adını girin.");
-      return;
-    }
-
-    if (!startDate || !endDate) {
-      alert("Lütfen başlangıç ve bitiş tarihlerini seçin.");
       return;
     }
 
@@ -101,18 +175,19 @@ export default function RezervasyonPage() {
 
       await createReservation(reservation);
 
-      alert("Rezervasyon başarıyla oluşturuldu.");
-      router.push("/rezervasyon");
+      alert(
+        "Rezervasyon başarıyla oluşturuldu."
+      );
 
-      
+      router.push("/rezervasyon");
     } catch (error) {
       console.error(error);
 
-      if (error instanceof Error) {
-        alert(error.message);
-      } else {
-        alert("Rezervasyon oluşturulamadı.");
-      }
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Rezervasyon oluşturulamadı."
+      );
     } finally {
       setLoading(false);
     }
@@ -131,152 +206,172 @@ export default function RezervasyonPage() {
           onSubmit={handleSubmit}
           className="space-y-5 p-8"
         >
-          {/* Araç */}
-          <div className="grid grid-cols-[120px_1fr] items-center gap-4">
-            <label
-              htmlFor="vehicle"
-              className="font-medium"
-            >
-              Araç
-            </label>
-
-            <select
-              id="vehicle"
-              value={vehicleId}
-              onChange={(e) => setVehicleId(e.target.value)}
-              disabled={vehiclesLoading}
-              className="rounded border px-3 py-2 disabled:bg-gray-100"
-            >
-              {vehiclesLoading && (
-                <option value="">
-                  Araçlar yükleniyor...
-                </option>
-              )}
-
-              {!vehiclesLoading && araclar.length === 0 && (
-                <option value="">
-                  Araç bulunamadı
-                </option>
-              )}
-
-              {araclar.map((arac) => (
-                <option
-                  key={arac.id}
-                  value={arac.id}
-                >
-                  {arac.licensePlate} - {arac.makeModel}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Kullanıcı */}
           <div className="grid grid-cols-[120px_1fr] items-center gap-4">
             <label
               htmlFor="username"
               className="font-medium"
             >
-              Kullanıcı
+              Kullanıcı<span className="text-red-500">*</span>
             </label>
 
             <input
               id="username"
               type="text"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={(e) =>
+                setUsername(e.target.value)
+              }
               placeholder="Ahmet Yılmaz"
               className="rounded border px-3 py-2"
             />
           </div>
 
-          {/* Başlangıç */}
           <div className="grid grid-cols-[120px_1fr] items-center gap-4">
             <label
               htmlFor="startDate"
-              className="font-medium"
+              className="font-medium" 
             >
-              Başlangıç
+              Başlangıç<span className="text-red-500">*</span>
             </label>
 
             <input
               id="startDate"
               type="date"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setVehicleId("");
+              }}
               className="rounded border px-3 py-2"
             />
           </div>
 
-          {/* Bitiş */}
           <div className="grid grid-cols-[120px_1fr] items-center gap-4">
             <label
               htmlFor="endDate"
               className="font-medium"
             >
-              Bitiş
+              Bitiş<span className="text-red-500">*</span>
             </label>
 
             <input
               id="endDate"
               type="date"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
               min={startDate || undefined}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setVehicleId("");
+              }}
               className="rounded border px-3 py-2"
             />
           </div>
 
-          {/* Amaç */}
+          <div className="grid grid-cols-[120px_1fr] items-start gap-4">
+            <label
+              htmlFor="vehicle"
+              className="pt-2 font-medium"
+            >
+              Araç<span className="text-red-500">*</span>
+            </label>
+
+            <div>
+              <select
+                id="vehicle"
+                value={vehicleId}
+                onChange={(e) =>
+                  setVehicleId(e.target.value)
+                }
+                disabled={
+                  !startDate ||
+                  !endDate ||
+                  loadingAvailableVehicles ||
+                  availableVehicles.length === 0
+                }
+                className="w-full rounded border px-3 py-2 disabled:bg-gray-100"
+              >
+                <option value="">
+                  {loadingAvailableVehicles
+                    ? "Müsait araçlar yükleniyor..."
+                    : !startDate || !endDate
+                      ? "Önce tarih seçiniz"
+                      : availableVehicles.length === 0
+                        ? "Müsait araç bulunamadı"
+                        : "Araç seçiniz"}
+                </option>
+
+                {availableVehicles.map((vehicle) => (
+                  <option
+                    key={vehicle.id}
+                    value={vehicle.id}
+                  >
+                    {vehicle.licensePlate} -{" "}
+                    {vehicle.makeModel}
+                  </option>
+                ))}
+              </select>
+
+              {availableError && (
+                <p className="mt-2 text-sm text-red-600">
+                  {availableError}
+                </p>
+              )}
+
+              {!loadingAvailableVehicles &&
+                startDate &&
+                endDate &&
+                !availableError &&
+                availableVehicles.length === 0 && (
+                  <p className="mt-2 text-sm text-yellow-700">
+                    Seçilen tarihlerde müsait araç
+                    bulunamadı.
+                  </p>
+                )}
+            </div>
+          </div>
+
           <div className="grid grid-cols-[120px_1fr] items-start gap-4">
             <label
               htmlFor="purpose"
               className="font-medium"
             >
-              Amaç
+              Amaç<span className="text-red-500">*</span>
             </label>
 
             <textarea
               id="purpose"
               rows={3}
               value={purpose}
-              onChange={(e) => setPurpose(e.target.value)}
+              onChange={(e) =>
+                setPurpose(e.target.value)
+              }
               placeholder="Rezervasyon amacı..."
               className="rounded border px-3 py-2"
             />
           </div>
 
-          {error && (
-            <div className="rounded-md border border-red-300 bg-red-50 p-4 text-sm text-red-700">
-              {error}
-            </div>
-          )}
-
           <div className="rounded-md border border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-800">
-            ⚠️ Araç seçilen tarihlerde daha önce rezerve edilmişse
-            rezervasyon oluşturulmaz.
+            Araç seçilen tarihlerde daha önce rezerve
+            edilmişse müsait araçlar listesinde
+            görünmez.
           </div>
 
-          {/* Butonlar */}
           <div className="flex justify-center gap-4 pt-4">
             <Link
-  href="/rezervasyon"
-  className="rounded border px-6 py-2 hover:bg-gray-100"
->
-  Vazgeç
-</Link>
+              href="/rezervasyon"
+              className="rounded border px-6 py-2 hover:bg-gray-100"
+            >
+              Vazgeç
+            </Link>
 
             <button
-              type="submit"
-              disabled={
-                loading ||
-                vehiclesLoading ||
-                araclar.length === 0
-              }
-              className="rounded bg-[#0B4EA2] px-6 py-2 text-white hover:bg-[#083a79] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {loading ? "Kaydediliyor..." : "Kaydet"}
-            </button>
-          </div>
+  type="submit"
+  disabled={!isFormValid}
+  className="rounded bg-[#0B4EA2] px-6 py-2 text-white transition hover:bg-[#083a79] disabled:cursor-not-allowed disabled:opacity-50"
+>
+  {loading ? "Kaydediliyor..." : "Kaydet"}
+</button>
+</div>
         </form>
       </div>
     </main>

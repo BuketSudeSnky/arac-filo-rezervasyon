@@ -53,41 +53,49 @@ export default function RezervasyonlarPage() {
     rezervasyonlariGetir();
   }, []);
 
+  
+    
+  
+
   const handleCancel = async (id: number) => {
-    const onay = window.confirm(
-      "Bu rezervasyonu iptal etmek istediğinizden emin misiniz?"
+  const onay = window.confirm(
+    "Bu rezervasyonu iptal etmek istediğinizden emin misiniz?"
+  );
+
+  if (!onay) {
+    return;
+  }
+
+  try {
+    setCancellingId(id);
+
+    await cancelReservation(id);
+
+setRezervasyonlar((oncekiRezervasyonlar) =>
+  oncekiRezervasyonlar.map((rezervasyon) =>
+    rezervasyon.id === id
+      ? {
+          ...rezervasyon,
+          status: "Cancelled",
+        }
+      : rezervasyon
+  )
+);
+
+    alert("Rezervasyon başarıyla iptal edildi.");
+  } catch (error) {
+    console.error(error);
+
+    alert(
+      error instanceof Error
+        ? error.message
+        : "Rezervasyon iptal edilemedi."
     );
+  } finally {
+    setCancellingId(null);
+  }
+};
 
-    if (!onay) {
-      return;
-    }
-
-    try {
-      setCancellingId(id);
-
-      const guncellenenRezervasyon = await cancelReservation(id);
-
-      setRezervasyonlar((oncekiRezervasyonlar) =>
-        oncekiRezervasyonlar.map((rezervasyon) =>
-          rezervasyon.id === id
-            ? guncellenenRezervasyon
-            : rezervasyon
-        )
-      );
-
-      alert("Rezervasyon başarıyla iptal edildi.");
-    } catch (error) {
-      console.error(error);
-
-      if (error instanceof Error) {
-        alert(error.message);
-      } else {
-        alert("Rezervasyon iptal edilemedi.");
-      }
-    } finally {
-      setCancellingId(null);
-    }
-  };
 
   return (
     <main className="min-h-screen bg-[#F2F4F7] py-10">
@@ -213,29 +221,39 @@ export default function RezervasyonlarPage() {
 
                       <td className="p-4">
                         <div className="flex flex-wrap gap-2">
-                          <Link
-                            href={`/rezervasyon/duzenle?id=${rezervasyon.id}`}
-                            className="rounded-md border border-[#0B4EA2] px-4 py-2 text-sm font-medium text-[#0B4EA2] hover:bg-blue-50"
-                          >
-                            Düzenle
-                          </Link>
+                          {iptalEdildi ? (
+  <button
+    type="button"
+    disabled
+    className="cursor-not-allowed rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-400 opacity-60"
+  >
+    Düzenlenemez
+  </button>
+) : (
+  <Link
+    href={`/rezervasyon/duzenle?id=${rezervasyon.id}`}
+    className="rounded-md border border-[#0B4EA2] px-4 py-2 text-sm font-medium text-[#0B4EA2] hover:bg-blue-50"
+  >
+    Düzenle
+  </Link>
+)}
 
                           <button
-                            type="button"
-                            onClick={() =>
-                              handleCancel(rezervasyon.id)
-                            }
-                            disabled={
-                              iptalEdildi || isCancelling
-                            }
-                            className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            {isCancelling
-                              ? "İptal ediliyor..."
-                              : iptalEdildi
-                                ? "İptal Edildi"
-                                : "İptal Et"}
-                          </button>
+  type="button"
+  onClick={() => handleCancel(rezervasyon.id)}
+  disabled={
+    iptalEdildi ||
+    rezervasyon.status === "Completed" ||
+    isCancelling
+  }
+  className="rounded border border-red-500 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+>
+  {isCancelling
+    ? "İptal ediliyor..."
+    : iptalEdildi
+      ? "İptal Edildi"
+      : "İptal Et"}
+</button>
                         </div>
                       </td>
                     </tr>

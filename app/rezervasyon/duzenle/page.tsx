@@ -99,6 +99,11 @@ export default function RezervasyonDuzenlePage() {
       return;
     }
 
+    if (status === reservation.status) {
+  alert("Rezervasyon durumunda herhangi bir değişiklik yapılmadı.");
+  return;
+}
+
     try {
       setSaving(true);
 
@@ -251,7 +256,7 @@ export default function RezervasyonDuzenlePage() {
 
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || status === reservation.status}
               className="rounded bg-[#0B4EA2] px-6 py-2 text-white hover:bg-[#083a79] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {saving ? "Güncelleniyor..." : "Güncelle"}

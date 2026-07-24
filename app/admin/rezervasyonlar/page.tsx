@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import {
@@ -144,7 +145,7 @@ export default function AdminReservationsPage() {
 
   return (
     <section>
-      <div className="mb-8">
+      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <h1 className="text-2xl font-bold text-gray-800">
           Rezervasyon Yönetimi
         </h1>
@@ -153,6 +154,13 @@ export default function AdminReservationsPage() {
           Tüm şirket rezervasyonlarını görüntüleyin ve yönetin.
         </p>
       </div>
+
+              <Link
+              href="/admin/rezervasyonlar/yeni"
+              className="rounded-lg bg-[#0B4EA2] px-5 py-3 font-semibold text-white hover:bg-[#083a79]"
+              >
+               Yeni Rezervasyon
+               </Link>
 
       <div className="mb-6 rounded-xl bg-white p-5 shadow-sm">
         <div className="grid gap-4 md:grid-cols-2">

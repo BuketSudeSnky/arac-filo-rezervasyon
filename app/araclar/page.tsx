@@ -93,6 +93,30 @@ export default function AraclarPage() {
           </Link>
         </div>
 
+         {/* Tarih Aralığı */}
+        <div className="mt-8 rounded-lg bg-white p-6 shadow">
+          <h2 className="mb-4 text-lg font-semibold">
+            Müsait Araçları Görüntüle
+          </h2>
+
+          <div className="flex flex-wrap gap-4">
+            <input
+              type="date"
+              className="rounded border px-3 py-2"
+            />
+
+            <input
+              type="date"
+              className="rounded border px-3 py-2"
+            />
+
+            <button className="rounded bg-[#FFC531] px-6 py-2 font-semibold text-[#14181F] hover:bg-[#e9b42d]">
+              Müsait Araçları Göster
+            </button>
+          </div>
+        </div>
+
+
         {/* Filtreler */}
         <div className="mb-6 flex items-end gap-6 rounded-lg bg-white p-5 shadow">
           <div>
@@ -194,48 +218,12 @@ export default function AraclarPage() {
     Rezervasyon Yap
   </Link>
 
-  <Link
-    href={`/araclar/duzenle?id=${arac.id}`}
-    className="rounded-md border border-[#0B4EA2] px-5 py-2 text-[#0B4EA2] hover:bg-blue-50"
-  >
-    Düzenle
-  </Link>
-
-  <button
-    type="button"
-    onClick={() => handleDelete(arac.id)}
-    className="rounded-md bg-red-600 px-5 py-2 text-white hover:bg-red-700"
-  >
-    Sil
-  </button>
 </div>
               </div>
             </div>
           ))}
         </div>
 
-        {/* Tarih Aralığı */}
-        <div className="mt-8 rounded-lg bg-white p-6 shadow">
-          <h2 className="mb-4 text-lg font-semibold">
-            Müsait Araçları Görüntüle
-          </h2>
-
-          <div className="flex flex-wrap gap-4">
-            <input
-              type="date"
-              className="rounded border px-3 py-2"
-            />
-
-            <input
-              type="date"
-              className="rounded border px-3 py-2"
-            />
-
-            <button className="rounded bg-[#FFC531] px-6 py-2 font-semibold text-[#14181F] hover:bg-[#e9b42d]">
-              Müsait Araçları Göster
-            </button>
-          </div>
-        </div>
       </div>
     </main>
   );

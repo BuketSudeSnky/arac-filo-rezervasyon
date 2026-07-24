@@ -29,11 +29,13 @@ export interface ReservationRequest {
   status: ReservationStatus;
 }
 
-async function getErrorMessage(response: Response): Promise<string> {
+async function getErrorMessage(
+  response: Response
+): Promise<string> {
   try {
     const data = await response.json();
 
-    return data.message || "İşlem başarısız.";
+    return data.message || data.error || "İşlem başarısız.";
   } catch {
     return "İşlem başarısız.";
   }
@@ -97,6 +99,26 @@ export async function cancelReservation(
     {
       method: "PATCH",
     }
+  );
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response));
+  }
+
+  return response.json();
+}
+
+export async function getAvailableVehicles(
+  startDate: string,
+  endDate: string
+): Promise<Vehicle[]> {
+  const params = new URLSearchParams({
+    startDate,
+    endDate,
+  });
+
+  const response = await fetch(
+    `${BASE_URL}/vehicles/available?${params.toString()}`
   );
 
   if (!response.ok) {

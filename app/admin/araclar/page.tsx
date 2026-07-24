@@ -15,6 +15,8 @@ export default function AdminVehiclesPage() {
   const [statusFilter, setStatusFilter] = useState("Tümü");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [deletingId, setDeletingId] =
+  useState<number | null>(null);
 
   const loadVehicles = async () => {
     try {
@@ -76,33 +78,41 @@ export default function AdminVehiclesPage() {
     });
   }, [vehicles, searchText, statusFilter]);
 
+  
+
   const handleDelete = async (id: number) => {
-    const confirmed = window.confirm(
-      "Bu aracı silmek istediğinizden emin misiniz?"
+  const confirmed = window.confirm(
+    "Bu aracı silmek istediğinizden emin misiniz?"
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    setDeletingId(id);
+
+    await deleteVehicle(id);
+
+    setVehicles((currentVehicles) =>
+      currentVehicles.filter(
+        (vehicle) => vehicle.id !== id
+      )
     );
 
-    if (!confirmed) {
-      return;
-    }
+    alert("Araç başarıyla silindi.");
+  } catch (error) {
+    console.error(error);
 
-    try {
-      await deleteVehicle(id);
-
-      setVehicles((currentVehicles) =>
-        currentVehicles.filter((vehicle) => vehicle.id !== id)
-      );
-
-      alert("Araç başarıyla silindi.");
-    } catch (error) {
-      console.error(error);
-
-      if (error instanceof Error) {
-        alert(error.message);
-      } else {
-        alert("Araç silinemedi.");
-      }
-    }
-  };
+    alert(
+      error instanceof Error
+        ? error.message
+        : "Araç silinemedi."
+    );
+  } finally {
+    setDeletingId(null);
+  }
+};
 
   return (
     <section>
@@ -118,7 +128,7 @@ export default function AdminVehiclesPage() {
         </div>
 
         <Link
-          href="/araclar/yeni"
+          href="/admin/araclar/yeni"
           className="rounded-lg bg-[#0B4EA2] px-5 py-3 font-semibold text-white transition hover:bg-[#083a79]"
         >
           + Yeni Araç Ekle
@@ -152,9 +162,9 @@ export default function AdminVehiclesPage() {
               className="w-full rounded-lg border bg-white px-4 py-3 outline-none focus:border-[#0B4EA2]"
             >
               <option value="Tümü">Tümü</option>
-              <option value="Active">Aktif</option>
-              <option value="Maintenance">Bakımda</option>
-              <option value="Passive">Pasif</option>
+              <option value="Aktif">Aktif</option>
+              <option value="Bakımda">Bakımda</option>
+              <option value="Pasif">Pasif</option>
             </select>
           </div>
         </div>
@@ -234,19 +244,22 @@ export default function AdminVehiclesPage() {
                     <td className="px-6 py-4">
                       <div className="flex justify-end gap-2">
                         <Link
-                          href={`/araclar/duzenle?id=${vehicle.id}`}
+                          href={`/admin/araclar/duzenle?id=${vehicle.id}`}
                           className="rounded-lg border border-[#0B4EA2] px-4 py-2 text-sm font-semibold text-[#0B4EA2] transition hover:bg-blue-50"
                         >
                           Düzenle
                         </Link>
 
                         <button
-                          type="button"
-                          onClick={() => handleDelete(vehicle.id)}
-                          className="rounded-lg border border-red-500 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50"
-                        >
-                          Sil
-                        </button>
+  type="button"
+  onClick={() => handleDelete(vehicle.id)}
+  disabled={deletingId === vehicle.id}
+  className="rounded-lg border border-red-500 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+>
+  {deletingId === vehicle.id
+    ? "Siliniyor..."
+    : "Sil"}
+</button>
                       </div>
                     </td>
                   </tr>
@@ -261,16 +274,10 @@ export default function AdminVehiclesPage() {
 }
 
 function VehicleStatusBadge({ status }: { status: string }) {
-  const statusText: Record<string, string> = {
-    Active: "Aktif",
-    Maintenance: "Bakımda",
-    Passive: "Pasif",
-  };
-
   const statusStyle: Record<string, string> = {
-    Active: "bg-green-100 text-green-700",
-    Maintenance: "bg-amber-100 text-amber-700",
-    Passive: "bg-gray-200 text-gray-700",
+    Aktif: "bg-green-100 text-green-700",
+    Bakımda: "bg-amber-100 text-amber-700",
+    Pasif: "bg-gray-200 text-gray-700",
   };
 
   return (
@@ -279,7 +286,7 @@ function VehicleStatusBadge({ status }: { status: string }) {
         statusStyle[status] ?? "bg-gray-100 text-gray-700"
       }`}
     >
-      {statusText[status] ?? status}
+      {status}
     </span>
   );
 }
