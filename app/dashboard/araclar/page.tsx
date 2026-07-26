@@ -259,11 +259,12 @@ export default function DashboardAraclarPage() {
 
                 <div className="mt-6">
                   {arac.status === "Aktif" ? (
-                   <Link
-  href={`/dashboard/rezervasyon/yeni?vehicleId=${arac.id}`}
->
-  Rezervasyon Yap
-</Link>
+                  <Link
+    href={`/dashboard/rezervasyon/yeni?vehicleId=${arac.id}`}
+    className="rounded-md bg-[#0B4EA2] px-5 py-2 text-white hover:bg-[#093d7f]"
+  >
+    Rezervasyon Yap
+  </Link>
                   ) : (
                     <button
                       type="button"
