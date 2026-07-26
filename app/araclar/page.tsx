@@ -205,7 +205,7 @@ export default function AraclarPage() {
 
                 <div className="mt-6 flex flex-wrap gap-3">
   <Link
-    href={`/rezervasyon/yeni?vehicleId=${arac.id}`}
+    href={`/dashboard/rezervasyon/yeni?vehicleId=${arac.id}`}
     className="rounded-md bg-[#0B4EA2] px-5 py-2 text-white hover:bg-[#093d7f]"
   >
     Rezervasyon Yap

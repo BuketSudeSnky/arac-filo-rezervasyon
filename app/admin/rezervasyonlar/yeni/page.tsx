@@ -10,7 +10,32 @@ import {
   type ReservationRequest,
 } from "../../../../api/services/reservationService";
 
+import {
+  DayPicker,
+  type DateRange,
+} from "react-day-picker";
+import "react-day-picker/style.css";
+import { tr } from "date-fns/locale";
+
 import type { Vehicle } from "../../../../api/services/vehicleService";
+
+function formatDateForApi(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function formatDateForDisplay(date: string): string {
+  const [year, month, day] = date.split("-").map(Number);
+
+  return new Date(
+    year,
+    month - 1,
+    day
+  ).toLocaleDateString("tr-TR");
+}
 
 export default function YeniRezervasyonPage() {
   const router = useRouter();
@@ -20,6 +45,8 @@ export default function YeniRezervasyonPage() {
   const [endDate, setEndDate] = useState("");
   const [purpose, setPurpose] = useState("");
   const [vehicleId, setVehicleId] = useState("");
+  const [selectedRange, setSelectedRange] =
+  useState<DateRange | undefined>();
 
   const [availableVehicles, setAvailableVehicles] = useState<Vehicle[]>([]);
 
@@ -28,6 +55,30 @@ export default function YeniRezervasyonPage() {
 
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+
+  const handleDateSelect = (
+  range: DateRange | undefined
+) => {
+  setSelectedRange(range);
+  setError("");
+  setSuccessMessage("");
+
+  // Tarih değiştiğinde daha önce getirilen araçlar geçersiz olur.
+  setAvailableVehicles([]);
+  setVehicleId("");
+
+  if (range?.from) {
+    setStartDate(formatDateForApi(range.from));
+  } else {
+    setStartDate("");
+  }
+
+  if (range?.to) {
+    setEndDate(formatDateForApi(range.to));
+  } else {
+    setEndDate("");
+  }
+};
 
   const handleFindAvailableVehicles = async () => {
     if (!startDate || !endDate) {
@@ -179,56 +230,59 @@ export default function YeniRezervasyonPage() {
                 setUsername(event.target.value)
               }
               disabled={saving}
-              placeholder="Örneğin: Buket Sude"
+              placeholder="Örneğin: Ahmet Yılmaz"
               className="w-full rounded-lg border px-4 py-3 outline-none focus:border-[#0B4EA2] disabled:bg-gray-100"
             />
           </div>
 
-          <div className="grid gap-5 md:grid-cols-2">
-            <div>
-              <label
-                htmlFor="startDate"
-                className="mb-2 block text-sm font-medium text-gray-700"
-              >
-                Başlangıç Tarihi
-              </label>
+<div>
+  <label className="mb-2 block text-sm font-medium text-gray-700">
+    Rezervasyon Tarihleri
+  </label>
 
-              <input
-                id="startDate"
-                type="date"
-                value={startDate}
-                onChange={(event) => {
-                  setStartDate(event.target.value);
-                  setAvailableVehicles([]);
-                  setVehicleId("");
-                }}
-                disabled={saving}
-                className="w-full rounded-lg border px-4 py-3 outline-none focus:border-[#0B4EA2] disabled:bg-gray-100"
-              />
-            </div>
+  <div className="rounded-xl border p-4">
+    <DayPicker
+      mode="range"
+      locale={tr}
+      selected={selectedRange}
+      onSelect={handleDateSelect}
+      disabled={{
+        before: new Date(),
+      }}
+      resetOnSelect
+    />
 
-            <div>
-              <label
-                htmlFor="endDate"
-                className="mb-2 block text-sm font-medium text-gray-700"
-              >
-                Bitiş Tarihi
-              </label>
+    <div className="mt-4 rounded-lg bg-gray-50 p-4 text-sm text-gray-700">
+      {!startDate && (
+        <p>Başlangıç ve bitiş tarihini takvimden seçin.</p>
+      )}
 
-              <input
-                id="endDate"
-                type="date"
-                value={endDate}
-                onChange={(event) => {
-                  setEndDate(event.target.value);
-                  setAvailableVehicles([]);
-                  setVehicleId("");
-                }}
-                disabled={saving}
-                className="w-full rounded-lg border px-4 py-3 outline-none focus:border-[#0B4EA2] disabled:bg-gray-100"
-              />
-            </div>
-          </div>
+      {startDate && !endDate && (
+        <p>
+          <span className="font-semibold">Başlangıç:</span>{" "}
+          {formatDateForDisplay(startDate)}
+          <span className="ml-2 text-gray-500">
+            Şimdi bitiş tarihini seçin.
+          </span>
+        </p>
+      )}
+
+      {startDate && endDate && (
+        <div className="flex flex-wrap gap-x-6 gap-y-2">
+          <p>
+            <span className="font-semibold">Başlangıç:</span>{" "}
+            {formatDateForDisplay(startDate)}
+          </p>
+
+          <p>
+            <span className="font-semibold">Bitiş:</span>{" "}
+            {formatDateForDisplay(endDate)}
+          </p>
+        </div>
+      )}
+    </div>
+  </div>
+</div>
 
           <button
             type="button"

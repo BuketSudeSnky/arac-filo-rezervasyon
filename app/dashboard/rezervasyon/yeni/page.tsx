@@ -1,15 +1,49 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import {
+  FormEvent,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+
+import { DayPicker, type DateRange } from "react-day-picker";
+import "react-day-picker/style.css";
+import { tr } from "date-fns/locale";
 
 import {
   createReservation,
+  getReservations,
+  type Reservation,
   type ReservationRequest,
 } from "../../../../api/services/reservationService";
 
+function parseApiDate(date: string): Date {
+  const [year, month, day] = date.split("-").map(Number);
+
+  return new Date(year, month - 1, day);
+}
+
+function formatDateForApi(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
 export default function YeniRezervasyonPage() {
+
+  const [selectedRange, setSelectedRange] =
+  useState<DateRange | undefined>();
+
+const [reservations, setReservations] =
+  useState<Reservation[]>([]);
+
+const [reservationsLoading, setReservationsLoading] =
+  useState(true);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -23,7 +57,56 @@ export default function YeniRezervasyonPage() {
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
-  const today = new Date().toISOString().split("T")[0];
+  useEffect(() => {
+  let isCancelled = false;
+
+  getReservations()
+    .then((data) => {
+      if (!isCancelled) {
+        setReservations(data);
+      }
+    })
+    .catch((error) => {
+      console.error(
+        "Rezervasyon tarihleri alınamadı:",
+        error
+      );
+
+      if (!isCancelled) {
+        setSubmitError(
+          "Araç rezervasyon tarihleri yüklenemedi."
+        );
+      }
+    })
+    .finally(() => {
+      if (!isCancelled) {
+        setReservationsLoading(false);
+      }
+    });
+
+  return () => {
+    isCancelled = true;
+  };
+}, []);
+
+
+
+const reservedRanges = useMemo<DateRange[]>(() => {
+  if (!vehicleId) {
+    return [];
+  }
+
+  return reservations
+    .filter(
+      (reservation) =>
+        reservation.vehicle?.id === Number(vehicleId) &&
+        reservation.status !== "Cancelled"
+    )
+    .map((reservation) => ({
+      from: parseApiDate(reservation.startDate),
+      to: parseApiDate(reservation.endDate),
+    }));
+}, [reservations, vehicleId]);
 
   const isFormValid =
     vehicleId !== "" &&
@@ -51,7 +134,8 @@ export default function YeniRezervasyonPage() {
       endDate,
       purpose: purpose.trim(),
       status: "Planned",
-    };
+    }
+    ;
 
    try {
   setSaving(true);
@@ -130,57 +214,79 @@ export default function YeniRezervasyonPage() {
               />
             </div>
 
-            <div className="grid gap-5 md:grid-cols-2">
-              <div>
-                <label
-                  htmlFor="startDate"
-                  className="mb-2 block text-sm font-medium text-gray-700"
-                >
-                  Başlangıç Tarihi
-                </label>
+           <div>
+  <label className="mb-2 block text-sm font-medium text-gray-700">
+    Rezervasyon Tarihleri
+  </label>
 
-                <input
-                  id="startDate"
-                  type="date"
-                  min={today}
-                  value={startDate}
-                  onChange={(event) => {
-                    const selectedDate = event.target.value;
+  {reservationsLoading ? (
+    <div className="rounded-lg border p-6 text-center text-gray-500">
+      Rezerve tarihler yükleniyor...
+    </div>
+  ) : (
+    <div className="rounded-xl border p-4">
+      <DayPicker
+        mode="range"
+        locale={tr}
+        selected={selectedRange}
+        onSelect={(range) => {
+          setSelectedRange(range);
+          setSubmitError("");
 
-                    setStartDate(selectedDate);
-                    setSubmitError("");
+          if (range?.from) {
+            setStartDate(formatDateForApi(range.from));
+          } else {
+            setStartDate("");
+          }
 
-                    if (endDate && selectedDate > endDate) {
-                      setEndDate("");
-                    }
-                  }}
-                  disabled={saving}
-                  className="w-full rounded-lg border px-4 py-3 outline-none focus:border-[#0B4EA2] disabled:bg-gray-100"
-                />
-              </div>
+          if (range?.to) {
+            setEndDate(formatDateForApi(range.to));
+          } else {
+            setEndDate("");
+          }
+        }}
+        disabled={[
+          { before: new Date() },
+          ...reservedRanges,
+        ]}
+        excludeDisabled
+        modifiers={{
+          reserved: reservedRanges,
+        }}
+        modifiersClassNames={{
+          reserved: "reserved-day",
+        }}
+      />
 
-              <div>
-                <label
-                  htmlFor="endDate"
-                  className="mb-2 block text-sm font-medium text-gray-700"
-                >
-                  Bitiş Tarihi
-                </label>
+      <div className="mt-4 flex flex-wrap gap-5 text-sm text-gray-600">
+        <div className="flex items-center gap-2">
+          <span className="h-4 w-4 rounded bg-red-100" />
+          Rezerve edilmiş günler
+        </div>
 
-                <input
-                  id="endDate"
-                  type="date"
-                  min={startDate || today}
-                  value={endDate}
-                  onChange={(event) => {
-                    setEndDate(event.target.value);
-                    setSubmitError("");
-                  }}
-                  disabled={saving}
-                  className="w-full rounded-lg border px-4 py-3 outline-none focus:border-[#0B4EA2] disabled:bg-gray-100"
-                />
-              </div>
-            </div>
+        <div className="flex items-center gap-2">
+          <span className="h-4 w-4 rounded bg-blue-100" />
+          Seçtiğiniz tarihler
+        </div>
+      </div>
+
+      {startDate && (
+        <p className="mt-4 text-sm text-gray-700">
+          <span className="font-semibold">Başlangıç:</span>{" "}
+          {parseApiDate(startDate).toLocaleDateString("tr-TR")}
+
+          {endDate && (
+            <>
+              {" — "}
+              <span className="font-semibold">Bitiş:</span>{" "}
+              {parseApiDate(endDate).toLocaleDateString("tr-TR")}
+            </>
+          )}
+        </p>
+      )}
+    </div>
+  )}
+</div>
 
             <div>
               <label
