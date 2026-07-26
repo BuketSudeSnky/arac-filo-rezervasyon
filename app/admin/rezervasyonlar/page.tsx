@@ -18,6 +18,12 @@ const STATUS_OPTIONS = [
   { value: "Cancelled", label: "İptal Edildi" },
 ];
 
+function normalizeSearchText(value: string): string {
+  return value
+    .toLocaleLowerCase("tr-TR")
+    .replace(/\s+/g, "");
+}
+
 export default function AdminReservationsPage() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [searchText, setSearchText] = useState("");
@@ -55,25 +61,33 @@ export default function AdminReservationsPage() {
   }, []);
 
   const filteredReservations = useMemo(() => {
-    return reservations.filter((reservation) => {
-      const searchableText = `
-        ${reservation.username}
-        ${reservation.vehicle?.licensePlate ?? ""}
-        ${reservation.vehicle?.makeModel ?? ""}
-        ${reservation.purpose}
-      `.toLocaleLowerCase("tr-TR");
+  const normalizedSearchText =
+    normalizeSearchText(searchText);
 
-      const matchesSearch = searchableText.includes(
-        searchText.toLocaleLowerCase("tr-TR")
+  return reservations.filter((reservation) => {
+    const searchableText = `
+      ${reservation.username}
+      ${reservation.vehicle?.licensePlate ?? ""}
+      ${reservation.vehicle?.makeModel ?? ""}
+      ${reservation.purpose}
+    `;
+
+    const matchesSearch =
+      normalizeSearchText(searchableText).includes(
+        normalizedSearchText
       );
 
-      const matchesStatus =
-        statusFilter === "Tümü" ||
-        reservation.status === statusFilter;
+    const matchesStatus =
+      statusFilter === "Tümü" ||
+      reservation.status === statusFilter;
 
-      return matchesSearch && matchesStatus;
-    });
-  }, [reservations, searchText, statusFilter]);
+    return matchesSearch && matchesStatus;
+  })
+
+  .sort((a, b) => b.id - a.id);
+
+}, [reservations, searchText, statusFilter]);
+
 
   const handleStatusChange = async (
   reservationId: number,

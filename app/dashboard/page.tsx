@@ -9,7 +9,7 @@ export default function DashboardPage() {
         </p>
 
         <h1 className="mb-3 text-3xl font-bold">
-          Hoş geldiniz, Buket
+          Hoş geldiniz, Ahmet
         </h1>
 
         <p className="max-w-2xl text-blue-100">

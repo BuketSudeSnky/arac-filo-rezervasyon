@@ -56,10 +56,6 @@ export default function DashboardAraclarPage() {
       return;
     }
 
-    /*
-      Müsait araç endpoint'i bağlandığında burada
-      getAvailableVehicles kullanılacak.
-    */
 
     alert("Tarih aralığı seçildi.");
   };
@@ -247,11 +243,13 @@ export default function DashboardAraclarPage() {
                   </span>
 
                   <span
-                    className={`rounded-full px-3 py-1 text-sm font-semibold ${
-                      arac.status === "Aktif"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-yellow-100 text-yellow-700"
-                    }`}
+                 className={`rounded-full px-3 py-1 text-sm font-semibold ${
+                   arac.status === "Aktif"
+                   ? "bg-green-100 text-green-700"
+                   : arac.status === "Bakımda"
+                   ? "bg-yellow-100 text-yellow-700"
+                   : "bg-red-100 text-red-700"
+                   }`}
                   >
                     {arac.status}
                   </span>
@@ -259,11 +257,12 @@ export default function DashboardAraclarPage() {
 
                 <div className="mt-6">
                   {arac.status === "Aktif" ? (
-                   <Link
-  href={`/dashboard/rezervasyon/yeni?vehicleId=${arac.id}`}
->
-  Rezervasyon Yap
-</Link>
+                  <Link
+                  href={`/dashboard/rezervasyon/yeni?vehicleId=${arac.id}`}
+                  className="rounded-md bg-[#0B4EA2] px-5 py-2 text-white hover:bg-[#093d7f]"
+                 >
+                   Rezervasyon Yap
+                </Link>
                   ) : (
                     <button
                       type="button"

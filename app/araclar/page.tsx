@@ -194,9 +194,11 @@ export default function AraclarPage() {
 
                   <span
                     className={`rounded-full px-3 py-1 text-sm font-semibold ${
-                      arac.status === "Aktif"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-yellow-100 text-yellow-700"
+                    arac.status === "Aktif"
+                     ? "bg-green-100 text-green-700"
+                     : arac.status === "Bakımda"
+                     ? "bg-yellow-100 text-yellow-700"
+                     : "bg-red-100 text-red-700"
                     }`}
                   >
                     {arac.status}

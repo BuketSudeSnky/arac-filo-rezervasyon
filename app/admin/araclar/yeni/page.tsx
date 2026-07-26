@@ -6,8 +6,45 @@ import { useRouter } from "next/navigation";
 
 import {
   createVehicle,
+  getVehicles,
   type VehicleRequest,
 } from "../../../../api/services/vehicleService";
+
+function normalizeLicensePlate(plate: string): string {
+  return plate
+    .trim()
+    .toLocaleUpperCase("tr-TR")
+    .replace(/\s+/g, "");
+}
+
+  function formatLicensePlate(value: string): string {
+  const plate = value
+    .toLocaleUpperCase("tr-TR")
+    .replace(/[^A-Z0-9]/g, "");
+
+  if (plate.length <= 2) {
+    return plate;
+  }
+
+  const cityCode = plate.slice(0, 2);
+  const rest = plate.slice(2);
+
+  const letters = rest.match(/^[A-Z]+/)?.[0] ?? "";
+  const numbers = rest.slice(letters.length);
+
+  let formatted = cityCode;
+
+  if (letters) {
+    formatted += " " + letters;
+  }
+
+  if (numbers) {
+    formatted += " " + numbers;
+  }
+
+  return formatted;
+}
+
 
 export default function YeniAracPage() {
   const router = useRouter();
@@ -39,16 +76,33 @@ export default function YeniAracPage() {
       return;
     }
 
-    const newVehicle: VehicleRequest = {
-      licensePlate: licensePlate.trim().toUpperCase(),
-      makeModel: makeModel.trim(),
-      type,
-      status,
-    };
+    const normalizedPlate = normalizeLicensePlate(licensePlate);
+
+const newVehicle: VehicleRequest = {
+  licensePlate: licensePlate
+    .trim()
+    .toLocaleUpperCase("tr-TR"),
+  makeModel: makeModel.trim(),
+  type,
+  status,
+};
 
     try {
       setSaving(true);
       setError("");
+
+      const existingVehicles = await getVehicles();
+
+const plateAlreadyExists = existingVehicles.some(
+  (vehicle) =>
+    normalizeLicensePlate(vehicle.licensePlate) ===
+    normalizedPlate
+);
+
+if (plateAlreadyExists) {
+  setError("Bu plakaya sahip bir araç zaten kayıtlı.");
+  return;
+}
 
       await createVehicle(newVehicle);
 
@@ -99,8 +153,10 @@ export default function YeniAracPage() {
               type="text"
               value={licensePlate}
               onChange={(event) =>
-                setLicensePlate(event.target.value)
-              }
+  setLicensePlate(
+    formatLicensePlate(event.target.value)
+  )
+}
               placeholder="34 ABC 123"
               className="w-full rounded-lg border px-4 py-3 uppercase outline-none focus:border-[#0B4EA2]"
             />

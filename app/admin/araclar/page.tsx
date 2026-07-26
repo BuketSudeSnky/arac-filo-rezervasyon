@@ -9,6 +9,14 @@ import {
   type Vehicle,
 } from "../../../api/services/vehicleService";
 
+
+function normalizeSearchText(value: string): string {
+  return value
+    .toLocaleLowerCase("tr-TR")
+    .replace(/\s+/g, "");
+}
+
+
 export default function AdminVehiclesPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [searchText, setSearchText] = useState("");
@@ -61,22 +69,35 @@ export default function AdminVehiclesPage() {
   };
 }, []);
 
-  const filteredVehicles = useMemo(() => {
-    return vehicles.filter((vehicle) => {
-      const searchableText =
+ const filteredVehicles = useMemo(() => {
+  const normalizedSearchText =
+    normalizeSearchText(searchText);
+
+  return vehicles
+    .filter((vehicle) => {
+      const normalSearchableText =
         `${vehicle.licensePlate} ${vehicle.makeModel} ${vehicle.type}`
           .toLocaleLowerCase("tr-TR");
 
-      const matchesSearch = searchableText.includes(
-        searchText.toLocaleLowerCase("tr-TR")
-      );
+      const normalizedLicensePlate =
+        normalizeSearchText(vehicle.licensePlate);
+
+      const matchesSearch =
+        normalSearchableText.includes(
+          searchText.toLocaleLowerCase("tr-TR")
+        ) ||
+        normalizedLicensePlate.includes(
+          normalizedSearchText
+        );
 
       const matchesStatus =
-        statusFilter === "Tümü" || vehicle.status === statusFilter;
+        statusFilter === "Tümü" ||
+        vehicle.status === statusFilter;
 
       return matchesSearch && matchesStatus;
-    });
-  }, [vehicles, searchText, statusFilter]);
+    })
+    .sort((a, b) => b.id - a.id);
+}, [vehicles, searchText, statusFilter]);
 
   
 
@@ -206,9 +227,6 @@ export default function AdminVehiclesPage() {
                   <th className="px-6 py-4 font-semibold">Marka / Model</th>
                   <th className="px-6 py-4 font-semibold">Tür</th>
                   <th className="px-6 py-4 font-semibold">Durum</th>
-                  <th className="px-6 py-4 font-semibold">
-                    Son Rezervasyon
-                  </th>
                   <th className="px-6 py-4 text-right font-semibold">
                     İşlemler
                   </th>
@@ -237,9 +255,6 @@ export default function AdminVehiclesPage() {
                       <VehicleStatusBadge status={vehicle.status} />
                     </td>
 
-                    <td className="px-6 py-4 text-gray-500">
-                      Henüz eklenmedi
-                    </td>
 
                     <td className="px-6 py-4">
                       <div className="flex justify-end gap-2">
@@ -277,7 +292,7 @@ function VehicleStatusBadge({ status }: { status: string }) {
   const statusStyle: Record<string, string> = {
     Aktif: "bg-green-100 text-green-700",
     Bakımda: "bg-amber-100 text-amber-700",
-    Pasif: "bg-gray-200 text-gray-700",
+    Pasif: "bg-red-200 text-red-700",
   };
 
   return (
