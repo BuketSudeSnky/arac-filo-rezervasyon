@@ -49,7 +49,14 @@ const [reservationsLoading, setReservationsLoading] =
 
   const vehicleId = searchParams.get("vehicleId") ?? "";
 
-  const [username, setUsername] = useState("");
+ const [username] = useState(() => {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  return localStorage.getItem("username") ?? "";
+});
+
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [purpose, setPurpose] = useState("");
@@ -192,27 +199,6 @@ const reservedRanges = useMemo<DateRange[]>(() => {
 
         <div className="rounded-xl bg-white p-8 shadow-sm">
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label
-                htmlFor="username"
-                className="mb-2 block text-sm font-medium text-gray-700"
-              >
-                Kullanıcı
-              </label>
-
-              <input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(event) => {
-                  setUsername(event.target.value);
-                  setSubmitError("");
-                }}
-                disabled={saving}
-                placeholder="Örneğin: Ahmet Demir"
-                className="w-full rounded-lg border px-4 py-3 outline-none focus:border-[#0B4EA2] disabled:bg-gray-100"
-              />
-            </div>
 
            <div>
   <label className="mb-2 block text-sm font-medium text-gray-700">

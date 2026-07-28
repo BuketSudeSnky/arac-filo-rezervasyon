@@ -29,6 +29,18 @@ export interface ReservationRequest {
   status: ReservationStatus;
 }
 
+function getToken(): string {
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    throw new Error(
+      "Oturum bulunamadı. Lütfen tekrar giriş yapın."
+    );
+  }
+
+  return token;
+}
+
 async function getErrorMessage(
   response: Response
 ): Promise<string> {
@@ -42,7 +54,14 @@ async function getErrorMessage(
 }
 
 export async function getReservations(): Promise<Reservation[]> {
-  const response = await fetch(`${BASE_URL}/reservations`);
+  const token = getToken();
+
+  const response = await fetch(`${BASE_URL}/reservations`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
 
   if (!response.ok) {
     throw new Error(await getErrorMessage(response));
@@ -54,10 +73,13 @@ export async function getReservations(): Promise<Reservation[]> {
 export async function createReservation(
   reservation: ReservationRequest
 ): Promise<Reservation> {
+  const token = getToken();
+
   const response = await fetch(`${BASE_URL}/reservations`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify(reservation),
   });
@@ -73,12 +95,15 @@ export async function updateReservationStatus(
   id: number,
   status: ReservationStatus
 ): Promise<Reservation> {
+  const token = getToken();
+
   const response = await fetch(
     `${BASE_URL}/reservations/${id}/status`,
     {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ status }),
     }
@@ -94,10 +119,15 @@ export async function updateReservationStatus(
 export async function cancelReservation(
   id: number
 ): Promise<Reservation> {
+  const token = getToken();
+
   const response = await fetch(
     `${BASE_URL}/reservations/${id}/cancel`,
     {
       method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     }
   );
 
@@ -112,13 +142,21 @@ export async function getAvailableVehicles(
   startDate: string,
   endDate: string
 ): Promise<Vehicle[]> {
+  const token = getToken();
+
   const params = new URLSearchParams({
     startDate,
     endDate,
   });
 
   const response = await fetch(
-    `${BASE_URL}/vehicles/available?${params.toString()}`
+    `${BASE_URL}/vehicles/available?${params.toString()}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
   );
 
   if (!response.ok) {

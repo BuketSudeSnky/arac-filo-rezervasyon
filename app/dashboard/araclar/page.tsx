@@ -5,6 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { getVehicles } from "../../../api/services/vehicleService";
 
+import { getAvailableVehicles } from "../../../api/services/reservationService";
+
 type Vehicle = {
   id: number;
   licensePlate: string;
@@ -26,6 +28,12 @@ export default function DashboardAraclarPage() {
 
   const today = new Date().toISOString().split("T")[0];
 
+  const [musaitAraclarGetirildi, setMusaitAraclarGetirildi] =
+  useState(false);
+
+const [musaitAraclarLoading, setMusaitAraclarLoading] =
+  useState(false);
+
   useEffect(() => {
     const araclariGetir = async () => {
       try {
@@ -45,24 +53,48 @@ export default function DashboardAraclarPage() {
     araclariGetir();
   }, []);
 
-  const handleMusaitAraclariGoster = () => {
-    if (!baslangicTarihi || !bitisTarihi) {
-      alert("Lütfen başlangıç ve bitiş tarihlerini seçiniz.");
-      return;
-    }
+  const handleMusaitAraclariGoster = async () => {
+  if (!baslangicTarihi || !bitisTarihi) {
+    setError("Lütfen başlangıç ve bitiş tarihlerini seçin.");
+    return;
+  }
 
-    if (bitisTarihi < baslangicTarihi) {
-      alert("Bitiş tarihi başlangıç tarihinden önce olamaz.");
-      return;
-    }
+  if (bitisTarihi < baslangicTarihi) {
+    setError(
+      "Bitiş tarihi başlangıç tarihinden önce olamaz."
+    );
+    return;
+  }
 
-    /*
-      Müsait araç endpoint'i bağlandığında burada
-      getAvailableVehicles kullanılacak.
-    */
+  try {
+    setMusaitAraclarLoading(true);
+    setError("");
 
-    alert("Tarih aralığı seçildi.");
-  };
+    const data = await getAvailableVehicles(
+      baslangicTarihi,
+      bitisTarihi
+    );
+
+    setAraclar(data);
+    setMusaitAraclarGetirildi(true);
+  } catch (error) {
+    console.error(
+      "Müsait araçlar alınamadı:",
+      error
+    );
+
+    setAraclar([]);
+    setMusaitAraclarGetirildi(false);
+
+    setError(
+      error instanceof Error
+        ? error.message
+        : "Müsait araçlar alınamadı."
+    );
+  } finally {
+    setMusaitAraclarLoading(false);
+  }
+};
 
   const filtrelenmisAraclar = araclar.filter((arac) => {
     const turUygun = tur === "Tümü" || arac.type === tur;
@@ -106,15 +138,19 @@ export default function DashboardAraclarPage() {
               min={today}
               value={baslangicTarihi}
               onChange={(event) => {
-                setBaslangicTarihi(event.target.value);
+  const selectedDate = event.target.value;
 
-                if (
-                  bitisTarihi &&
-                  event.target.value > bitisTarihi
-                ) {
-                  setBitisTarihi("");
-                }
-              }}
+  setBaslangicTarihi(selectedDate);
+  setMusaitAraclarGetirildi(false);
+  setError("");
+
+  if (
+    bitisTarihi &&
+    selectedDate > bitisTarihi
+  ) {
+    setBitisTarihi("");
+  }
+}}
               className="rounded-lg border px-3 py-2 outline-none focus:border-[#0B4EA2]"
             />
           </div>
@@ -132,20 +168,30 @@ export default function DashboardAraclarPage() {
               type="date"
               min={baslangicTarihi || today}
               value={bitisTarihi}
-              onChange={(event) =>
-                setBitisTarihi(event.target.value)
-              }
+              onChange={(event) => {
+  setBitisTarihi(event.target.value);
+  setMusaitAraclarGetirildi(false);
+  setError("");
+}}
               className="rounded-lg border px-3 py-2 outline-none focus:border-[#0B4EA2]"
             />
           </div>
 
           <button
-            type="button"
-            onClick={handleMusaitAraclariGoster}
-            className="rounded-lg bg-[#FFC531] px-6 py-2 font-semibold text-[#14181F] transition hover:bg-[#e9b42d]"
-          >
-            Müsait Araçları Göster
-          </button>
+  type="button"
+  onClick={handleMusaitAraclariGoster}
+  disabled={
+    musaitAraclarLoading ||
+    !baslangicTarihi ||
+    !bitisTarihi
+  }
+  className="rounded-lg bg-[#FFC531] px-6 py-2 font-semibold text-[#14181F] transition hover:bg-[#e9b42d] disabled:cursor-not-allowed disabled:opacity-50"
+>
+  {musaitAraclarLoading
+    ? "Müsait araçlar aranıyor..."
+    : "Müsait Araçları Göster"}
+</button>
+
         </div>
       </section>
 
@@ -211,8 +257,10 @@ export default function DashboardAraclarPage() {
         !error &&
         filtrelenmisAraclar.length === 0 && (
           <p className="rounded-lg bg-white p-5 shadow-sm">
-            Seçilen kriterlere uygun araç bulunamadı.
-          </p>
+  {musaitAraclarGetirildi
+    ? "Seçilen tarihlerde müsait araç bulunamadı."
+    : "Seçilen kriterlere uygun araç bulunamadı."}
+</p>
         )}
 
       {/* Araç kartları */}

@@ -54,8 +54,9 @@ export default function AdminReservationsPage() {
     };
   }, []);
 
-  const filteredReservations = useMemo(() => {
-    return reservations.filter((reservation) => {
+ const filteredReservations = useMemo(() => {
+  return [...reservations]
+    .filter((reservation) => {
       const searchableText = `
         ${reservation.username}
         ${reservation.vehicle?.licensePlate ?? ""}
@@ -72,8 +73,9 @@ export default function AdminReservationsPage() {
         reservation.status === statusFilter;
 
       return matchesSearch && matchesStatus;
-    });
-  }, [reservations, searchText, statusFilter]);
+    })
+    .sort((a, b) => b.id - a.id);
+}, [reservations, searchText, statusFilter]);
 
   const handleStatusChange = async (
   reservationId: number,
@@ -266,11 +268,16 @@ export default function AdminReservationsPage() {
                 </thead>
 
                 <tbody className="divide-y">
-                  {filteredReservations.map((reservation) => (
-                    <tr
-                      key={reservation.id}
-                      className="transition hover:bg-gray-50"
-                    >
+                  {filteredReservations.map((reservation) => {
+  const isExpired = isReservationExpired(reservation.endDate);
+
+  return (
+    <tr
+      key={reservation.id}
+      className={`transition hover:bg-gray-50 ${
+        isExpired ? "bg-gray-50 opacity-75" : ""
+      }`}
+    >
                       <td className="px-6 py-4 text-gray-800">
                         {reservation.username}
                       </td>
@@ -292,6 +299,11 @@ export default function AdminReservationsPage() {
 
                       <td className="px-6 py-4 text-gray-700">
                         {formatDate(reservation.endDate)}
+                        {isExpired && (
+    <p className="mt-1 text-xs font-semibold text-red-600">
+      Süresi geçti
+    </p>
+  )}
                       </td>
 
                       <td className="max-w-[220px] px-6 py-4 text-gray-700">
@@ -311,8 +323,11 @@ export default function AdminReservationsPage() {
                           <select
                             value={reservation.status}
                             disabled={
-                              updatingId === reservation.id
-                            }
+  isExpired ||
+  reservation.status === "Completed" ||
+  reservation.status === "Cancelled" ||
+  updatingId === reservation.id
+}
                             onChange={(event) =>
   handleStatusChange(
     reservation.id,
@@ -337,6 +352,7 @@ export default function AdminReservationsPage() {
                               handleCancel(reservation.id)
                             }
                             disabled={
+                              isExpired ||
                               reservation.status ===
                                 "Cancelled" ||
                               reservation.status ===
@@ -350,7 +366,8 @@ export default function AdminReservationsPage() {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                     );
+})}
                 </tbody>
               </table>
             </div>
@@ -395,4 +412,13 @@ function ReservationStatusBadge({
       {statusText[status] ?? status}
     </span>
   );
+}
+
+function isReservationExpired(endDate: string) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const reservationEndDate = new Date(`${endDate}T00:00:00`);
+
+  return reservationEndDate < today;
 }

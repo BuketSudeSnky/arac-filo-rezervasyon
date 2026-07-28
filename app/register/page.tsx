@@ -3,46 +3,62 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { login } from "../../api/services/authService";
+import { register } from "../../api/services/authService";
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const router = useRouter();
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordAgain, setPasswordAgain] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError("");
 
-    if (!username.trim() || !password) {
-      setError("Kullanıcı adı ve şifre zorunludur.");
+    setError("");
+    setSuccess("");
+
+    const trimmedUsername = username.trim();
+
+    if (!trimmedUsername || !password || !passwordAgain) {
+      setError("Lütfen tüm alanları doldurun.");
+      return;
+    }
+
+    if (password !== passwordAgain) {
+      setError("Şifreler birbiriyle eşleşmiyor.");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("Şifre en az 6 karakter olmalıdır.");
       return;
     }
 
     try {
       setLoading(true);
 
-      const data = await login(username.trim(), password);
+      const newUser = await register(trimmedUsername, password);
 
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("username", data.username);
-      localStorage.setItem("role", data.role);
+      setSuccess(
+        `${newUser.username} kullanıcısı başarıyla oluşturuldu.`
+      );
 
-      if (data.role === "ADMIN") {
-        router.replace("/admin");
-      } else if (data.role === "USER") {
-        router.replace("/dashboard");
-      } else {
-        setError("Kullanıcı rolü tanınamadı.");
-      }
+      setUsername("");
+      setPassword("");
+      setPasswordAgain("");
+
+      setTimeout(() => {
+        router.push("/login");
+      }, 1500);
     } catch (error) {
       setError(
         error instanceof Error
           ? error.message
-          : "Giriş sırasında bir hata oluştu."
+          : "Kayıt sırasında bir hata oluştu."
       );
     } finally {
       setLoading(false);
@@ -58,7 +74,7 @@ export default function LoginPage() {
           </h1>
 
           <p className="mt-2 text-sm text-gray-500">
-            Şirket İçi Araç Rezervasyon Sistemi
+            Yeni Kullanıcı Kaydı
           </p>
         </div>
 
@@ -97,7 +113,29 @@ export default function LoginPage() {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               placeholder="Şifrenizi giriniz"
-              autoComplete="current-password"
+              autoComplete="new-password"
+              disabled={loading}
+              className="w-full rounded-lg border px-4 py-3 outline-none focus:border-[#0B4EA2] disabled:bg-gray-100"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="passwordAgain"
+              className="mb-2 block text-sm font-medium"
+            >
+              Şifre Tekrar
+            </label>
+
+            <input
+              id="passwordAgain"
+              type="password"
+              value={passwordAgain}
+              onChange={(event) =>
+                setPasswordAgain(event.target.value)
+              }
+              placeholder="Şifrenizi tekrar giriniz"
+              autoComplete="new-password"
               disabled={loading}
               className="w-full rounded-lg border px-4 py-3 outline-none focus:border-[#0B4EA2] disabled:bg-gray-100"
             />
@@ -109,35 +147,28 @@ export default function LoginPage() {
             </div>
           )}
 
+          {success && (
+            <div className="rounded-lg bg-green-50 p-3 text-sm text-green-700">
+              {success}
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={loading}
             className="w-full rounded-lg bg-[#0B4EA2] py-3 font-semibold text-white transition hover:bg-[#083a79] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loading ? "Giriş yapılıyor..." : "Giriş Yap"}
+            {loading ? "Kayıt yapılıyor..." : "Kayıt Ol"}
           </button>
         </form>
 
-        <div className="my-6 flex items-center">
-          <div className="h-px flex-1 bg-gray-300" />
-          <span className="mx-3 text-sm text-gray-500">veya</span>
-          <div className="h-px flex-1 bg-gray-300" />
-        </div>
-
-        <Link
-          href="/admin/login"
-          className="block w-full rounded-lg border border-[#0B4EA2] py-3 text-center font-semibold text-[#0B4EA2] transition hover:bg-[#0B4EA2] hover:text-white"
-        >
-          Yönetici Girişi
-        </Link>
-
         <div className="mt-6 text-center text-sm text-gray-600">
-          Hesabın yok mu?{" "}
+          Zaten hesabın var mı?{" "}
           <Link
-            href="/register"
+            href="/login"
             className="font-semibold text-[#0B4EA2] hover:underline"
           >
-            Kayıt Ol
+            Giriş Yap
           </Link>
         </div>
 

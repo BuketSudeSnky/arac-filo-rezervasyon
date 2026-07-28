@@ -15,104 +15,152 @@ export default function AdminVehiclesPage() {
   const [statusFilter, setStatusFilter] = useState("Tümü");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [deletingId, setDeletingId] =
-  useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(
+    null
+  );
 
-  const loadVehicles = async () => {
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function fetchVehicles() {
+      try {
+        const data = await getVehicles();
+
+        console.log("Araç API cevabı:", data);
+
+        if (!Array.isArray(data)) {
+          throw new Error(
+            "Backend araç listesini beklenen formatta döndürmedi."
+          );
+        }
+
+        if (!isCancelled) {
+          setVehicles(data);
+          setError("");
+        }
+      } catch (error) {
+        console.error("Araç yükleme hatası:", error);
+
+        if (!isCancelled) {
+          setVehicles([]);
+
+          setError(
+            error instanceof Error
+              ? error.message
+              : "Araçlar yüklenirken bir hata oluştu."
+          );
+        }
+      } finally {
+        if (!isCancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void fetchVehicles();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  const reloadVehicles = async () => {
     try {
       setLoading(true);
       setError("");
 
       const data = await getVehicles();
+
+      console.log("Araç API cevabı:", data);
+
+      if (!Array.isArray(data)) {
+        throw new Error(
+          "Backend araç listesini beklenen formatta döndürmedi."
+        );
+      }
+
       setVehicles(data);
     } catch (error) {
-      console.error(error);
-      setError("Araçlar yüklenirken bir hata oluştu.");
+      console.error("Araç yükleme hatası:", error);
+
+      setVehicles([]);
+
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Araçlar yüklenirken bir hata oluştu."
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-  let isCancelled = false;
-
-  getVehicles()
-    .then((data: Vehicle[]) => {
-      if (!isCancelled) {
-        setVehicles(data);
-        setError("");
-      }
-    })
-    .catch((error) => {
-      console.error(error);
-
-      if (!isCancelled) {
-        setError("Araçlar yüklenirken bir hata oluştu.");
-      }
-    })
-    .finally(() => {
-      if (!isCancelled) {
-        setLoading(false);
-      }
-    });
-
-  return () => {
-    isCancelled = true;
-  };
-}, []);
-
   const filteredVehicles = useMemo(() => {
-    return vehicles.filter((vehicle) => {
-      const searchableText =
-        `${vehicle.licensePlate} ${vehicle.makeModel} ${vehicle.type}`
-          .toLocaleLowerCase("tr-TR");
+    const normalizedSearchText = searchText
+      .trim()
+      .toLocaleLowerCase("tr-TR");
 
-      const matchesSearch = searchableText.includes(
-        searchText.toLocaleLowerCase("tr-TR")
-      );
+    return vehicles.filter((vehicle) => {
+      const searchableText = [
+        vehicle.licensePlate,
+        vehicle.makeModel,
+        vehicle.type,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLocaleLowerCase("tr-TR");
+
+      const matchesSearch =
+        normalizedSearchText === "" ||
+        searchableText.includes(normalizedSearchText);
+
+      const normalizedVehicleStatus = vehicle.status
+        ?.trim()
+        .toLocaleLowerCase("tr-TR");
+
+      const normalizedStatusFilter = statusFilter
+        .trim()
+        .toLocaleLowerCase("tr-TR");
 
       const matchesStatus =
-        statusFilter === "Tümü" || vehicle.status === statusFilter;
+        statusFilter === "Tümü" ||
+        normalizedVehicleStatus === normalizedStatusFilter;
 
       return matchesSearch && matchesStatus;
     });
   }, [vehicles, searchText, statusFilter]);
 
-  
-
   const handleDelete = async (id: number) => {
-  const confirmed = window.confirm(
-    "Bu aracı silmek istediğinizden emin misiniz?"
-  );
-
-  if (!confirmed) {
-    return;
-  }
-
-  try {
-    setDeletingId(id);
-
-    await deleteVehicle(id);
-
-    setVehicles((currentVehicles) =>
-      currentVehicles.filter(
-        (vehicle) => vehicle.id !== id
-      )
+    const confirmed = window.confirm(
+      "Bu aracı silmek istediğinizden emin misiniz?"
     );
 
-    alert("Araç başarıyla silindi.");
-  } catch (error) {
-    console.error(error);
+    if (!confirmed) {
+      return;
+    }
 
-    alert(
-      error instanceof Error
-        ? error.message
-        : "Araç silinemedi."
-    );
-  } finally {
-    setDeletingId(null);
-  }
-};
+    try {
+      setDeletingId(id);
+
+      await deleteVehicle(id);
+
+      setVehicles((currentVehicles) =>
+        currentVehicles.filter((vehicle) => vehicle.id !== id)
+      );
+
+      window.alert("Araç başarıyla silindi.");
+    } catch (error) {
+      console.error("Araç silme hatası:", error);
+
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : "Araç silinemedi."
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   return (
     <section>
@@ -138,27 +186,39 @@ export default function AdminVehiclesPage() {
       <div className="mb-6 rounded-xl bg-white p-5 shadow-sm">
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
+            <label
+              htmlFor="vehicle-search"
+              className="mb-2 block text-sm font-medium text-gray-700"
+            >
               Araç Ara
             </label>
 
             <input
+              id="vehicle-search"
               type="text"
               value={searchText}
-              onChange={(event) => setSearchText(event.target.value)}
+              onChange={(event) =>
+                setSearchText(event.target.value)
+              }
               placeholder="Plaka, marka/model veya tür ara"
               className="w-full rounded-lg border px-4 py-3 outline-none focus:border-[#0B4EA2]"
             />
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
+            <label
+              htmlFor="status-filter"
+              className="mb-2 block text-sm font-medium text-gray-700"
+            >
               Durum
             </label>
 
             <select
+              id="status-filter"
               value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
+              onChange={(event) =>
+                setStatusFilter(event.target.value)
+              }
               className="w-full rounded-lg border bg-white px-4 py-3 outline-none focus:border-[#0B4EA2]"
             >
               <option value="Tümü">Tümü</option>
@@ -183,110 +243,145 @@ export default function AdminVehiclesPage() {
 
             <button
               type="button"
-              onClick={loadVehicles}
-              className="mt-4 rounded-lg bg-[#0B4EA2] px-4 py-2 font-semibold text-white"
+              onClick={() => void reloadVehicles()}
+              className="mt-4 rounded-lg bg-[#0B4EA2] px-4 py-2 font-semibold text-white transition hover:bg-[#083a79]"
             >
               Tekrar Dene
             </button>
           </div>
         )}
 
-        {!loading && !error && filteredVehicles.length === 0 && (
-          <div className="p-8 text-center text-gray-500">
-            Kriterlere uygun araç bulunamadı.
-          </div>
-        )}
+        {!loading &&
+          !error &&
+          filteredVehicles.length === 0 && (
+            <div className="p-8 text-center text-gray-500">
+              {vehicles.length === 0
+                ? "Henüz araç eklenmemiş."
+                : "Kriterlere uygun araç bulunamadı."}
+            </div>
+          )}
 
-        {!loading && !error && filteredVehicles.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[850px] text-left">
-              <thead className="bg-gray-50 text-sm text-gray-600">
-                <tr>
-                  <th className="px-6 py-4 font-semibold">Plaka</th>
-                  <th className="px-6 py-4 font-semibold">Marka / Model</th>
-                  <th className="px-6 py-4 font-semibold">Tür</th>
-                  <th className="px-6 py-4 font-semibold">Durum</th>
-                  <th className="px-6 py-4 font-semibold">
-                    Son Rezervasyon
-                  </th>
-                  <th className="px-6 py-4 text-right font-semibold">
-                    İşlemler
-                  </th>
-                </tr>
-              </thead>
+        {!loading &&
+          !error &&
+          filteredVehicles.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[850px] text-left">
+                <thead className="bg-gray-50 text-sm text-gray-600">
+                  <tr>
+                    <th className="px-6 py-4 font-semibold">
+                      Plaka
+                    </th>
 
-              <tbody className="divide-y">
-                {filteredVehicles.map((vehicle) => (
-                  <tr
-                    key={vehicle.id}
-                    className="transition hover:bg-gray-50"
-                  >
-                    <td className="px-6 py-4 font-semibold text-gray-800">
-                      {vehicle.licensePlate}
-                    </td>
+                    <th className="px-6 py-4 font-semibold">
+                      Marka / Model
+                    </th>
 
-                    <td className="px-6 py-4 text-gray-700">
-                      {vehicle.makeModel}
-                    </td>
+                    <th className="px-6 py-4 font-semibold">
+                      Tür
+                    </th>
 
-                    <td className="px-6 py-4 text-gray-700">
-                      {vehicle.type}
-                    </td>
+                    <th className="px-6 py-4 font-semibold">
+                      Durum
+                    </th>
 
-                    <td className="px-6 py-4">
-                      <VehicleStatusBadge status={vehicle.status} />
-                    </td>
+                    <th className="px-6 py-4 font-semibold">
+                      Son Rezervasyon
+                    </th>
 
-                    <td className="px-6 py-4 text-gray-500">
-                      Henüz eklenmedi
-                    </td>
-
-                    <td className="px-6 py-4">
-                      <div className="flex justify-end gap-2">
-                        <Link
-                          href={`/admin/araclar/duzenle?id=${vehicle.id}`}
-                          className="rounded-lg border border-[#0B4EA2] px-4 py-2 text-sm font-semibold text-[#0B4EA2] transition hover:bg-blue-50"
-                        >
-                          Düzenle
-                        </Link>
-
-                        <button
-  type="button"
-  onClick={() => handleDelete(vehicle.id)}
-  disabled={deletingId === vehicle.id}
-  className="rounded-lg border border-red-500 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
->
-  {deletingId === vehicle.id
-    ? "Siliniyor..."
-    : "Sil"}
-</button>
-                      </div>
-                    </td>
+                    <th className="px-6 py-4 text-right font-semibold">
+                      İşlemler
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                </thead>
+
+                <tbody className="divide-y">
+                  {filteredVehicles.map((vehicle) => (
+                    <tr
+                      key={vehicle.id}
+                      className="transition hover:bg-gray-50"
+                    >
+                      <td className="px-6 py-4 font-semibold text-gray-800">
+                        {vehicle.licensePlate}
+                      </td>
+
+                      <td className="px-6 py-4 text-gray-700">
+                        {vehicle.makeModel}
+                      </td>
+
+                      <td className="px-6 py-4 text-gray-700">
+                        {vehicle.type}
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <VehicleStatusBadge
+                          status={vehicle.status}
+                        />
+                      </td>
+
+                      <td className="px-6 py-4 text-gray-500">
+                        Henüz eklenmedi
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <div className="flex justify-end gap-2">
+                          <Link
+                            href={`/admin/araclar/duzenle?id=${vehicle.id}`}
+                            className="rounded-lg border border-[#0B4EA2] px-4 py-2 text-sm font-semibold text-[#0B4EA2] transition hover:bg-blue-50"
+                          >
+                            Düzenle
+                          </Link>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void handleDelete(vehicle.id)
+                            }
+                            disabled={
+                              deletingId === vehicle.id
+                            }
+                            className="rounded-lg border border-red-500 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {deletingId === vehicle.id
+                              ? "Siliniyor..."
+                              : "Sil"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
       </div>
     </section>
   );
 }
 
-function VehicleStatusBadge({ status }: { status: string }) {
+function VehicleStatusBadge({
+  status,
+}: {
+  status: string;
+}) {
+  const normalizedStatus = status?.trim() ?? "";
+
   const statusStyle: Record<string, string> = {
     Aktif: "bg-green-100 text-green-700",
     Bakımda: "bg-amber-100 text-amber-700",
     Pasif: "bg-gray-200 text-gray-700",
+    Active: "bg-green-100 text-green-700",
+    Maintenance: "bg-amber-100 text-amber-700",
+    Passive: "bg-gray-200 text-gray-700",
   };
 
   return (
     <span
       className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-        statusStyle[status] ?? "bg-gray-100 text-gray-700"
+        statusStyle[normalizedStatus] ??
+        "bg-gray-100 text-gray-700"
       }`}
     >
-      {status}
+      {normalizedStatus || "Belirsiz"}
     </span>
   );
 }

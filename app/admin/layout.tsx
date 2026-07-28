@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -41,6 +42,20 @@ export default function AdminLayout({
   const pathname = usePathname();
   const router = useRouter();
 
+  useEffect(() => {
+  const token = localStorage.getItem("token");
+  const role = localStorage.getItem("role");
+
+  if (!token) {
+    router.replace("/admin/login");
+    return;
+  }
+
+  if (role !== "ADMIN") {
+    router.replace("/login");
+  }
+}, [router]);
+
   // Admin giriş sayfasında sol menü görünmesin.
   if (pathname === "/admin/login") {
     return <>{children}</>;
@@ -60,6 +75,7 @@ export default function AdminLayout({
 
     return pathname.startsWith(href);
   };
+
 
   return (
     <div className="flex min-h-screen bg-[#F2F4F7]">

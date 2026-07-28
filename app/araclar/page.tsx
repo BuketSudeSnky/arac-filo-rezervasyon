@@ -1,12 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState
+} from "react";
+
 import Link from "next/link";
 import Image from "next/image";
-import {
-  deleteVehicle,
-  getVehicles,
-} from "../../api/services/vehicleService";
+
+import {getVehicles} from "../../api/services/vehicleService";
+
+
+import { getAvailableVehicles } from "../../api/services/reservationService";
+
 
 type Vehicle = {
   id: number;
@@ -24,6 +30,44 @@ export default function AraclarPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+
+  const [baslangicTarihi, setBaslangicTarihi] = useState("");
+const [bitisTarihi, setBitisTarihi] = useState("");
+const today = new Date().toISOString().split("T")[0];
+
+
+
+const handleMusaitAraclariGoster = async () => {
+  if (!baslangicTarihi || !bitisTarihi) {
+    setError("Başlangıç ve bitiş tarihlerini seçin.");
+    return;
+  }
+
+  try {
+    setLoading(true);
+    setError("");
+
+    const data = await getAvailableVehicles(
+      baslangicTarihi,
+      bitisTarihi
+    );
+
+    setAraclar(data);
+
+    if (data.length === 0) {
+      setError(
+        "Seçilen tarihlerde müsait araç bulunamadı."
+      );
+    }
+  } catch (error) {
+    console.error(error);
+    setError("Müsait araçlar alınamadı.");
+  } finally {
+    setLoading(false);
+  }
+};
+
+
   useEffect(() => {
     const araclariGetir = async () => {
       try {
@@ -40,28 +84,7 @@ export default function AraclarPage() {
     araclariGetir();
   }, []);
 
-  const handleDelete = async (id: number) => {
-  const onay = window.confirm(
-    "Bu aracı silmek istediğinizden emin misiniz?"
-  );
 
-  if (!onay) {
-    return;
-  }
-
-  try {
-    await deleteVehicle(id);
-
-    setAraclar((oncekiAraclar) =>
-      oncekiAraclar.filter((arac) => arac.id !== id)
-    );
-
-    alert("Araç başarıyla silindi.");
-  } catch (error) {
-    console.error(error);
-    alert("Araç silinemedi.");
-  }
-};
 
   const filtrelenmisAraclar = araclar.filter((arac) => {
     const turUygun = tur === "Tümü" || arac.type === tur;
@@ -87,27 +110,80 @@ export default function AraclarPage() {
         </div>
 
          {/* Tarih Aralığı */}
-        <div className="mt-8 rounded-lg bg-white p-6 shadow">
-          <h2 className="mb-4 text-lg font-semibold">
-            Müsait Araçları Görüntüle
-          </h2>
+       <section className="mb-6 rounded-xl bg-white p-6 shadow-sm">
+        <h2 className="mb-4 text-lg font-semibold text-gray-900">
+          Müsait Araçları Görüntüle
+        </h2>
 
-          <div className="flex flex-wrap gap-4">
+        <div className="flex flex-wrap items-end gap-4">
+          <div>
+            <label
+              htmlFor="baslangicTarihi"
+              className="mb-2 block text-sm font-medium"
+            >
+              Başlangıç Tarihi
+            </label>
+
             <input
+              id="baslangicTarihi"
               type="date"
-              className="rounded border px-3 py-2"
-            />
+              min={today}
+              value={baslangicTarihi}
+              onChange={(event) => {
+  const selectedDate = event.target.value;
 
-            <input
-              type="date"
-              className="rounded border px-3 py-2"
-            />
+  setBaslangicTarihi(selectedDate);
+  setError("");
 
-            <button className="rounded bg-[#FFC531] px-6 py-2 font-semibold text-[#14181F] hover:bg-[#e9b42d]">
-              Müsait Araçları Göster
-            </button>
+  if (
+    bitisTarihi &&
+    selectedDate > bitisTarihi
+  ) {
+    setBitisTarihi("");
+  }
+}}
+              className="rounded-lg border px-3 py-2 outline-none focus:border-[#0B4EA2]"
+            />
           </div>
+
+          <div>
+            <label
+              htmlFor="bitisTarihi"
+              className="mb-2 block text-sm font-medium"
+            >
+              Bitiş Tarihi
+            </label>
+
+            <input
+              id="bitisTarihi"
+              type="date"
+              min={baslangicTarihi || today}
+              value={bitisTarihi}
+              onChange={(event) => {
+  setBitisTarihi(event.target.value);
+  setError("");
+}}
+              className="rounded-lg border px-3 py-2 outline-none focus:border-[#0B4EA2]"
+            />
+          </div>
+
+          <button
+  type="button"
+  onClick={handleMusaitAraclariGoster}
+  disabled={
+    loading ||
+    !baslangicTarihi ||
+    !bitisTarihi
+}
+  className="rounded-lg bg-[#FFC531] px-6 py-2 font-semibold text-[#14181F] transition hover:bg-[#e9b42d] disabled:cursor-not-allowed disabled:opacity-50"
+>
+  {loading
+    ? "Müsait araçlar aranıyor..."
+    : "Müsait Araçları Göster"}
+</button>
+
         </div>
+      </section>
 
 
         {/* Filtreler */}

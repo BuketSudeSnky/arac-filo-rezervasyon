@@ -1,10 +1,51 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
+
+
 
 export default function DashboardLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+
+  const router = useRouter();
+
+useEffect(() => {
+  const token = localStorage.getItem("token");
+  const role = localStorage.getItem("role");
+
+  if (!token) {
+    router.replace("/login");
+    return;
+  }
+
+  if (role === "ADMIN") {
+    router.replace("/admin");
+    return;
+  }
+
+  if (role !== "USER") {
+    router.replace("/login");
+  }
+
+  
+
+}, [router]);
+
+function handleLogout() {
+  localStorage.removeItem("token");
+  localStorage.removeItem("username");
+  localStorage.removeItem("role");
+  localStorage.removeItem("user");
+
+  router.push("/login");
+}
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="border-b bg-white shadow-sm">
@@ -45,6 +86,7 @@ export default function DashboardLayout({
 
             <button
               type="button"
+              onClick={handleLogout}
               className="rounded-lg bg-red-600 px-4 py-2 text-white transition hover:bg-red-700"
             >
               Çıkış Yap

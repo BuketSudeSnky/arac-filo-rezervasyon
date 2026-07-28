@@ -1,6 +1,43 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
+  const router = useRouter();
+
+  const [username] = useState(() => {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  return localStorage.getItem("username") ?? "";
+});
+  
+
+  useEffect(() => {
+  const token = localStorage.getItem("token");
+  const role = localStorage.getItem("role");
+
+
+  if (!token) {
+    router.replace("/login");
+    return;
+  }
+
+  if (role === "ADMIN") {
+    router.replace("/admin");
+    return;
+  }
+
+  if (role !== "USER") {
+    router.replace("/login");
+    return;
+  }
+}, [router]);
+
+
   return (
     <div>
       <section className="mb-8 rounded-2xl bg-blue-700 p-8 text-white shadow-md">
@@ -9,7 +46,7 @@ export default function DashboardPage() {
         </p>
 
         <h1 className="mb-3 text-3xl font-bold">
-          Hoş geldiniz, Buket
+          Hoş geldiniz{username ? `, ${username}` : ""}!
         </h1>
 
         <p className="max-w-2xl text-blue-100">
