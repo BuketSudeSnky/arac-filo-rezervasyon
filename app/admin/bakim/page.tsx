@@ -1,6 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useToast } from "./../../components/ToastProvider";
+
+import {
+  getVehicles,
+  type Vehicle,
+} from "../../../api/services/vehicleService";
 
 type MaintenanceStatus =
   | "Reported"
@@ -60,6 +66,7 @@ const INITIAL_MAINTENANCE_RECORDS: MaintenanceRecord[] = [
 const STATUS_OPTIONS: {
   value: MaintenanceStatus;
   label: string;
+  
 }[] = [
   {
     value: "Reported",
@@ -75,10 +82,17 @@ const STATUS_OPTIONS: {
   },
 ];
 
+function normalizeSearchText(value: string): string {
+  return value
+    .toLocaleLowerCase("tr-TR")
+    .replace(/\s+/g, "")
+    .trim();
+}
+
 export default function AdminMaintenancePage() {
+const { showToast } = useToast();
 
-
-    const [showCreateForm, setShowCreateForm] = useState(false);
+const [showCreateForm, setShowCreateForm] = useState(false);
 
 const [newRecord, setNewRecord] = useState({
   vehicleId: "",
@@ -98,6 +112,10 @@ const [newRecord, setNewRecord] = useState({
   const [statusFilter, setStatusFilter] = useState("Tümü");
   const [selectedRecord, setSelectedRecord] =
     useState<MaintenanceRecord | null>(null);
+
+const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+const [vehiclesLoading, setVehiclesLoading] = useState(true);
+const [vehiclesError, setVehiclesError] = useState("");
 
   const filteredRecords = useMemo(() => {
     return records.filter((record) => {
@@ -132,25 +150,52 @@ const [newRecord, setNewRecord] = useState({
     (record) => record.status === "Completed"
   ).length;
 
+  useEffect(() => {
+  const loadVehicles = async () => {
+    try {
+      setVehiclesLoading(true);
+      setVehiclesError("");
+
+      const data = await getVehicles();
+      setVehicles(data);
+    } catch (error) {
+      console.error("Araçlar yüklenemedi:", error);
+
+      setVehiclesError(
+        error instanceof Error
+          ? error.message
+          : "Araçlar yüklenemedi."
+      );
+    } finally {
+      setVehiclesLoading(false);
+    }
+  };
+
+  void loadVehicles();
+}, []);
+
    const handleCreateRecord = (
   event: React.FormEvent<HTMLFormElement>
 ) => {
   event.preventDefault();
 
-  if (
-    !newRecord.licensePlate.trim() ||
-    !newRecord.makeModel.trim() ||
-    !newRecord.title.trim() ||
-    !newRecord.description.trim() ||
-    !newRecord.reportedDate
-  ) {
-    alert("Lütfen tüm alanları doldurun.");
-    return;
-  }
+if (!newRecord.vehicleId) {
+  showToast("Lütfen mevcut araçlardan birini seçin.", "error");
+  return;
+}
+
+if (
+  !newRecord.title.trim() ||
+  !newRecord.description.trim() ||
+  !newRecord.reportedDate
+) {
+  showToast("Lütfen tüm alanları doldurun.", "error");
+  return;
+}
 
   const record: MaintenanceRecord = {
     id: Date.now(),
-    vehicleId: Number(newRecord.vehicleId) || Date.now(),
+    vehicleId: Number(newRecord.vehicleId),
     licensePlate: newRecord.licensePlate.trim(),
     makeModel: newRecord.makeModel.trim(),
     title: newRecord.title.trim(),
@@ -175,6 +220,7 @@ const [newRecord, setNewRecord] = useState({
   });
 
   setShowCreateForm(false);
+  showToast("Bakım kaydı başarıyla oluşturuldu.", "success");
 };
 
   const handleStatusChange = (
@@ -214,6 +260,7 @@ const [newRecord, setNewRecord] = useState({
         (record) => record.id !== recordId
       )
     );
+    showToast("Kayıt başarıyla silindi.", "success");
   };
 
   return (
@@ -437,12 +484,16 @@ const [newRecord, setNewRecord] = useState({
       )}
 
       {showCreateForm && (
+
   <CreateMaintenanceModal
-    newRecord={newRecord}
-    setNewRecord={setNewRecord}
-    onSubmit={handleCreateRecord}
-    onClose={() => setShowCreateForm(false)}
-  />
+  newRecord={newRecord}
+  setNewRecord={setNewRecord}
+  vehicles={vehicles}
+  vehiclesLoading={vehiclesLoading}
+  vehiclesError={vehiclesError}
+  onSubmit={handleCreateRecord}
+  onClose={() => setShowCreateForm(false)}
+/>
 )}
 
     </section>
@@ -606,6 +657,9 @@ type NewMaintenanceRecord = {
 function CreateMaintenanceModal({
   newRecord,
   setNewRecord,
+  vehicles,
+  vehiclesLoading,
+  vehiclesError,
   onSubmit,
   onClose,
 }: {
@@ -613,69 +667,217 @@ function CreateMaintenanceModal({
   setNewRecord: React.Dispatch<
     React.SetStateAction<NewMaintenanceRecord>
   >;
+  vehicles: Vehicle[];
+  vehiclesLoading: boolean;
+  vehiclesError: string;
   onSubmit: (
     event: React.FormEvent<HTMLFormElement>
   ) => void;
   onClose: () => void;
 }) {
+  const [vehicleSearch, setVehicleSearch] = useState(
+    newRecord.vehicleId
+      ? `${newRecord.licensePlate} - ${newRecord.makeModel}`
+      : ""
+  );
+
+  const [showVehicleResults, setShowVehicleResults] =
+    useState(false);
+
+  const filteredVehicles = useMemo(() => {
+    const search = normalizeSearchText(vehicleSearch);
+
+    if (!search || newRecord.vehicleId) {
+      return vehicles;
+    }
+
+    return vehicles.filter((vehicle) => {
+      const plate = normalizeSearchText(
+        vehicle.licensePlate
+      );
+
+      const makeModel = normalizeSearchText(
+        vehicle.makeModel
+      );
+
+      const combined = normalizeSearchText(
+        `${vehicle.licensePlate}${vehicle.makeModel}`
+      );
+
+      const searchWords = vehicleSearch
+        .toLocaleLowerCase("tr-TR")
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+
+      const searchableText =
+        `${vehicle.licensePlate} ${vehicle.makeModel}`
+          .toLocaleLowerCase("tr-TR");
+
+      const matchesEveryWord = searchWords.every(
+        (word) =>
+          searchableText.includes(word) ||
+          normalizeSearchText(searchableText).includes(
+            normalizeSearchText(word)
+          )
+      );
+
+      return (
+        plate.includes(search) ||
+        makeModel.includes(search) ||
+        combined.includes(search) ||
+        matchesEveryWord
+      );
+    });
+  }, [vehicleSearch, vehicles, newRecord.vehicleId]);
+
+  const handleVehicleSearchChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const value = event.target.value;
+
+    setVehicleSearch(value);
+    setShowVehicleResults(true);
+
+    setNewRecord((current) => ({
+      ...current,
+      vehicleId: "",
+      licensePlate: "",
+      makeModel: "",
+    }));
+  };
+
+  const handleVehicleSelect = (vehicle: Vehicle) => {
+    setNewRecord((current) => ({
+      ...current,
+      vehicleId: String(vehicle.id),
+      licensePlate: vehicle.licensePlate,
+      makeModel: vehicle.makeModel,
+    }));
+
+    setVehicleSearch(
+      `${vehicle.licensePlate} - ${vehicle.makeModel}`
+    );
+
+    setShowVehicleResults(false);
+  };
+
+  const handleClose = () => {
+    setNewRecord({
+      vehicleId: "",
+      licensePlate: "",
+      makeModel: "",
+      title: "",
+      description: "",
+      reportedDate: "",
+      status: "Reported",
+    });
+
+    onClose();
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-xl rounded-xl bg-white p-6 shadow-xl">
-        <div className="mb-6 flex items-start justify-between">
+      <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
+        <div className="mb-6 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-xl font-bold text-gray-800">
               Yeni Bakım veya Arıza Kaydı
             </h2>
 
             <p className="mt-1 text-sm text-gray-500">
-              Araçla ilgili bakım veya arıza bilgilerini girin.
+              Araçla ilgili bakım veya arıza bilgilerini
+              girin.
             </p>
           </div>
 
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="rounded-lg px-3 py-1 text-xl text-gray-500 hover:bg-gray-100"
           >
             ×
           </button>
         </div>
 
-        <form
-          onSubmit={onSubmit}
-          className="space-y-4"
-        >
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FormField label="Plaka">
+        <form onSubmit={onSubmit} className="space-y-4">
+          <FormField label="Araç Ara ve Seç">
+            <div className="relative">
               <input
                 type="text"
-                value={newRecord.licensePlate}
-                onChange={(event) =>
-                  setNewRecord((current) => ({
-                    ...current,
-                    licensePlate: event.target.value,
-                  }))
+                value={vehicleSearch}
+                onChange={handleVehicleSearchChange}
+                onFocus={() =>
+                  setShowVehicleResults(true)
                 }
-                placeholder="34 ABC 123"
+                placeholder="Plaka veya marka/model ara"
+                autoComplete="off"
                 className="w-full rounded-lg border px-4 py-3 outline-none focus:border-[#0B4EA2]"
               />
-            </FormField>
 
-            <FormField label="Marka / Model">
-              <input
-                type="text"
-                value={newRecord.makeModel}
-                onChange={(event) =>
-                  setNewRecord((current) => ({
-                    ...current,
-                    makeModel: event.target.value,
-                  }))
-                }
-                placeholder="Ford Focus"
-                className="w-full rounded-lg border px-4 py-3 outline-none focus:border-[#0B4EA2]"
-              />
-            </FormField>
-          </div>
+              {newRecord.vehicleId && (
+                <div className="mt-2 flex items-center justify-between rounded-lg border border-green-200 bg-green-50 px-4 py-3">
+                  <div>
+                    <p className="font-semibold text-gray-800">
+                      {newRecord.licensePlate}
+                    </p>
+
+                    <p className="text-sm text-gray-500">
+                      {newRecord.makeModel}
+                    </p>
+                  </div>
+
+                  <span className="text-sm font-semibold text-green-700">
+                    Seçildi
+                  </span>
+                </div>
+              )}
+
+              {showVehicleResults &&
+                !newRecord.vehicleId && (
+                  <div className="absolute left-0 right-0 z-30 mt-1 max-h-60 overflow-y-auto rounded-lg border bg-white shadow-lg">
+                    {vehiclesLoading ? (
+                      <p className="px-4 py-4 text-sm text-gray-500">
+                        Araçlar yükleniyor...
+                      </p>
+                    ) : vehiclesError ? (
+                      <p className="px-4 py-4 text-sm text-red-600">
+                        {vehiclesError}
+                      </p>
+                    ) : filteredVehicles.length === 0 ? (
+                      <p className="px-4 py-4 text-sm text-gray-500">
+                        Aramanızla eşleşen araç bulunamadı.
+                      </p>
+                    ) : (
+                      filteredVehicles.map((vehicle) => (
+                        <button
+                          key={vehicle.id}
+                          type="button"
+                          onClick={() =>
+                            handleVehicleSelect(vehicle)
+                          }
+                          className="block w-full border-b px-4 py-3 text-left transition last:border-b-0 hover:bg-blue-50"
+                        >
+                          <p className="font-semibold text-gray-800">
+                            {vehicle.licensePlate}
+                          </p>
+
+                          <p className="mt-1 text-sm text-gray-500">
+                            {vehicle.makeModel}
+                          </p>
+
+                          <div className="mt-1 flex gap-2 text-xs text-gray-400">
+                            <span>{vehicle.type}</span>
+                            <span>•</span>
+                            <span>{vehicle.status}</span>
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+            </div>
+          </FormField>
 
           <FormField label="Kayıt Başlığı">
             <input
@@ -750,7 +952,7 @@ function CreateMaintenanceModal({
           <div className="flex justify-end gap-3 pt-2">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="rounded-lg border px-5 py-3 font-semibold text-gray-700 hover:bg-gray-100"
             >
               Vazgeç
@@ -758,7 +960,8 @@ function CreateMaintenanceModal({
 
             <button
               type="submit"
-              className="rounded-lg bg-[#0B4EA2] px-5 py-3 font-semibold text-white hover:bg-[#083a79]"
+              disabled={!newRecord.vehicleId}
+              className="rounded-lg bg-[#0B4EA2] px-5 py-3 font-semibold text-white hover:bg-[#083a79] disabled:cursor-not-allowed disabled:opacity-50"
             >
               Kaydı Oluştur
             </button>

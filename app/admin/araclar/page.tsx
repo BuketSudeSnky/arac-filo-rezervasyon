@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+import { useToast } from "./../../components/ToastProvider";
+
+
 import {
   deleteVehicle,
   getVehicles,
@@ -18,6 +21,7 @@ export default function AdminVehiclesPage() {
   const [deletingId, setDeletingId] = useState<number | null>(
     null
   );
+  const { showToast } = useToast();
 
   useEffect(() => {
     let isCancelled = false;
@@ -131,36 +135,37 @@ export default function AdminVehiclesPage() {
   }, [vehicles, searchText, statusFilter]);
 
   const handleDelete = async (id: number) => {
-    const confirmed = window.confirm(
-      "Bu aracı silmek istediğinizden emin misiniz?"
+  const confirmed = window.confirm(
+    "Bu aracı silmek istediğinizden emin misiniz?"
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    setDeletingId(id);
+
+    await deleteVehicle(id);
+
+    setVehicles((currentVehicles) =>
+      currentVehicles.filter((vehicle) => vehicle.id !== id)
     );
 
-    if (!confirmed) {
-      return;
-    }
+    showToast("Araç başarıyla silindi.", "success");
+  } catch (error) {
+    console.error("Araç silme hatası:", error);
 
-    try {
-      setDeletingId(id);
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Araç silinemedi.";
 
-      await deleteVehicle(id);
-
-      setVehicles((currentVehicles) =>
-        currentVehicles.filter((vehicle) => vehicle.id !== id)
-      );
-
-      window.alert("Araç başarıyla silindi.");
-    } catch (error) {
-      console.error("Araç silme hatası:", error);
-
-      window.alert(
-        error instanceof Error
-          ? error.message
-          : "Araç silinemedi."
-      );
-    } finally {
-      setDeletingId(null);
-    }
-  };
+    showToast(message, "error");
+  } finally {
+    setDeletingId(null);
+  }
+};
 
   return (
     <section>

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useToast } from "./../../components/ToastProvider";
 
 import {
   cancelReservation,
@@ -10,6 +11,7 @@ import {
 } from "../../../api/services/reservationService";
 
 export default function RezervasyonlarimPage() {
+  const { showToast } = useToast();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -61,38 +63,45 @@ export default function RezervasyonlarimPage() {
   }, []);
 
   async function handleCancel(reservationId: number) {
-    const confirmed = window.confirm(
-      "Bu rezervasyonu iptal etmek istediğinizden emin misiniz?"
+  const confirmed = window.confirm(
+    "Bu rezervasyonu iptal etmek istediğinizden emin misiniz?"
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    setCancellingId(reservationId);
+
+    const updatedReservation =
+      await cancelReservation(reservationId);
+
+    setReservations((currentReservations) =>
+      currentReservations.map((reservation) =>
+        reservation.id === reservationId
+          ? updatedReservation
+          : reservation
+      )
     );
 
-    if (!confirmed) {
-      return;
-    }
+    showToast(
+      "Rezervasyon başarıyla iptal edildi.",
+      "success"
+    );
+  } catch (error) {
+    console.error(error);
 
-    try {
-      setCancellingId(reservationId);
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Rezervasyon iptal edilemedi.";
 
-      const updatedReservation = await cancelReservation(reservationId);
-
-      setReservations((currentReservations) =>
-        currentReservations.map((reservation) =>
-          reservation.id === reservationId
-            ? updatedReservation
-            : reservation
-        )
-      );
-    } catch (error) {
-      console.error(error);
-
-      alert(
-        error instanceof Error
-          ? error.message
-          : "Rezervasyon iptal edilemedi."
-      );
-    } finally {
-      setCancellingId(null);
-    }
+    showToast(message, "error");
+  } finally {
+    setCancellingId(null);
   }
+}
 
   if (loading) {
     return (

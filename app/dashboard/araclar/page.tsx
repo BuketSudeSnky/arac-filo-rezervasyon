@@ -3,17 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { getVehicles } from "../../../api/services/vehicleService";
+import {
+  getVehicles,
+  getAvailableVehicles,
+  type Vehicle,
+} from "../../../api/services/vehicleService";
 
-import { getAvailableVehicles } from "../../../api/services/reservationService";
-
-type Vehicle = {
-  id: number;
-  licensePlate: string;
-  makeModel: string;
-  type: string;
-  status: string;
-};
 
 export default function DashboardAraclarPage() {
   const [araclar, setAraclar] = useState<Vehicle[]>([]);

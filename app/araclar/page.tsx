@@ -7,6 +7,7 @@ import {
 
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 import {getVehicles} from "../../api/services/vehicleService";
 
@@ -31,9 +32,11 @@ export default function AraclarPage() {
   const [error, setError] = useState("");
 
 
-  const [baslangicTarihi, setBaslangicTarihi] = useState("");
+const [baslangicTarihi, setBaslangicTarihi] = useState("");
 const [bitisTarihi, setBitisTarihi] = useState("");
 const today = new Date().toISOString().split("T")[0];
+
+const router = useRouter();
 
 
 
@@ -92,6 +95,17 @@ const handleMusaitAraclariGoster = async () => {
 
     return turUygun && durumUygun;
   });
+
+  const handleRezervasyon = (vehicleId: number) => {
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    router.push(`/login?redirect=/dashboard/rezervasyon/yeni?vehicleId=${vehicleId}`);
+    return;
+  }
+
+  router.push(`/dashboard/rezervasyon/yeni?vehicleId=${vehicleId}`);
+};
 
   return (
     <main className="min-h-screen bg-[#F2F4F7] py-10">
@@ -280,12 +294,14 @@ const handleMusaitAraclariGoster = async () => {
                 </div>
 
                 <div className="mt-6 flex flex-wrap gap-3">
-  <Link
-    href={`/dashboard/rezervasyon/yeni?vehicleId=${arac.id}`}
-    className="rounded-md bg-[#0B4EA2] px-5 py-2 text-white hover:bg-[#093d7f]"
-  >
-    Rezervasyon Yap
-  </Link>
+ <button
+  type="button"
+  onClick={() => handleRezervasyon(arac.id)}
+  className="rounded-md bg-[#0B4EA2] px-5 py-2 text-white hover:bg-[#093d7f]"
+>
+  Rezervasyon Yap
+</button>
+
 
 </div>
               </div>

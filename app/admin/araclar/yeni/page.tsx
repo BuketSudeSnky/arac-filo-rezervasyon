@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useToast } from "./../../../components/ToastProvider";
 
 import {
   createVehicle,
@@ -11,6 +12,7 @@ import {
 
 export default function YeniAracPage() {
   const router = useRouter();
+  const { showToast } = useToast();
 
   const [licensePlate, setLicensePlate] = useState("");
   const [makeModel, setMakeModel] = useState("");
@@ -52,21 +54,23 @@ export default function YeniAracPage() {
 
       await createVehicle(newVehicle);
 
-      alert("Araç başarıyla eklendi.");
+showToast("Araç başarıyla eklendi.", "success");
 
-      router.push("/admin/araclar");
-      router.refresh();
+router.push("/admin/araclar");
+router.refresh();
     } catch (error) {
-      console.error(error);
+  console.error(error);
 
-      if (error instanceof Error) {
-        setError(error.message);
-      } else {
-        setError("Araç eklenemedi.");
-      }
-    } finally {
-      setSaving(false);
-    }
+  const message =
+    error instanceof Error
+      ? error.message
+      : "Araç eklenemedi.";
+
+  setError(message);
+  showToast(message, "error");
+} finally {
+  setSaving(false);
+}
   };
 
   return (

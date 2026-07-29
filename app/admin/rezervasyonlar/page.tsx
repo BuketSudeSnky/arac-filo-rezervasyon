@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useToast } from "./../../components/ToastProvider";
 
 import {
   cancelReservation,
@@ -19,12 +20,15 @@ const STATUS_OPTIONS = [
 ];
 
 export default function AdminReservationsPage() {
+  const { showToast } = useToast();
+
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState("Tümü");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+
 
   useEffect(() => {
     let isCancelled = false;
@@ -84,10 +88,11 @@ export default function AdminReservationsPage() {
   try {
     setUpdatingId(reservationId);
 
-    const updatedReservation = await updateReservationStatus(
-      reservationId,
-      newStatus
-    );
+    const updatedReservation =
+      await updateReservationStatus(
+        reservationId,
+        newStatus
+      );
 
     setReservations((currentReservations) =>
       currentReservations.map((reservation) =>
@@ -96,54 +101,73 @@ export default function AdminReservationsPage() {
           : reservation
       )
     );
-  } catch (error) {
-    console.error(error);
 
-    alert(
+    showToast(
+      "Rezervasyon durumu başarıyla güncellendi.",
+      "success"
+    );
+  } catch (error) {
+    console.error(
+      "Rezervasyon durumu güncelleme hatası:",
+      error
+    );
+
+    const message =
       error instanceof Error
         ? error.message
-        : "Rezervasyon durumu güncellenemedi."
-    );
+        : "Rezervasyon durumu güncellenemedi.";
+
+    showToast(message, "error");
   } finally {
     setUpdatingId(null);
   }
 };
 
-  const handleCancel = async (reservationId: number) => {
-    const confirmed = window.confirm(
-      "Bu rezervasyonu iptal etmek istediğinizden emin misiniz?"
+  const handleCancel = async (
+  reservationId: number
+) => {
+  const confirmed = window.confirm(
+    "Bu rezervasyonu iptal etmek istediğinizden emin misiniz?"
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    setUpdatingId(reservationId);
+
+    const updatedReservation =
+      await cancelReservation(reservationId);
+
+    setReservations((currentReservations) =>
+      currentReservations.map((reservation) =>
+        reservation.id === reservationId
+          ? updatedReservation
+          : reservation
+      )
     );
 
-    if (!confirmed) {
-      return;
-    }
+    showToast(
+      "Rezervasyon başarıyla iptal edildi.",
+      "success"
+    );
+  } catch (error) {
+    console.error(
+      "Rezervasyon iptal hatası:",
+      error
+    );
 
-    try {
-      setUpdatingId(reservationId);
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Rezervasyon iptal edilemedi.";
 
-      const updatedReservation = await cancelReservation(
-        reservationId
-      );
-
-      setReservations((currentReservations) =>
-        currentReservations.map((reservation) =>
-          reservation.id === reservationId
-            ? updatedReservation
-            : reservation
-        )
-      );
-    } catch (error) {
-      console.error(error);
-
-      alert(
-        error instanceof Error
-          ? error.message
-          : "Rezervasyon iptal edilemedi."
-      );
-    } finally {
-      setUpdatingId(null);
-    }
-  };
+    showToast(message, "error");
+  } finally {
+    setUpdatingId(null);
+  }
+};
 
   return (
     <section>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useToast } from "./../../../components/ToastProvider";
 
 import {
   getVehicleById,
@@ -13,6 +14,7 @@ import {
 export default function AdminAracDuzenlePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { showToast } = useToast();
 
   const vehicleId = Number(searchParams.get("id"));
 
@@ -104,21 +106,23 @@ export default function AdminAracDuzenlePage() {
 
       await updateVehicle(vehicleId, updatedVehicle);
 
-      alert("Araç başarıyla güncellendi.");
+showToast("Araç başarıyla güncellendi.", "success");
 
-      router.push("/admin/araclar");
-      router.refresh();
+router.push("/admin/araclar");
+router.refresh();
     } catch (error) {
-      console.error(error);
+  console.error(error);
 
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Araç güncellenemedi."
-      );
-    } finally {
-      setSaving(false);
-    }
+  const message =
+    error instanceof Error
+      ? error.message
+      : "Araç güncellenemedi.";
+
+  setError(message);
+  showToast(message, "error");
+} finally {
+  setSaving(false);
+}
   };
 
   if (loading) {

@@ -200,8 +200,6 @@ export async function getAvailableVehicles(
   startDate: string,
   endDate: string
 ): Promise<Vehicle[]> {
-  const token = getToken();
-
   const params = new URLSearchParams({
     startDate,
     endDate,
@@ -211,10 +209,6 @@ export async function getAvailableVehicles(
     `${BASE_URL}/vehicles/available?${params.toString()}`,
     {
       method: "GET",
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${token}`,
-      },
       cache: "no-store",
     }
   );
@@ -228,7 +222,8 @@ export async function getAvailableVehicles(
     );
   }
 
-  const data = (await response.json()) as VehicleListResponse;
+  const data =
+    (await response.json()) as VehicleListResponse;
 
   return extractVehicleList(data);
 }

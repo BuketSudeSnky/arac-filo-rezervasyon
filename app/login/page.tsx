@@ -30,6 +30,8 @@ export default function LoginPage() {
       localStorage.setItem("token", data.token);
       localStorage.setItem("username", data.username);
       localStorage.setItem("role", data.role);
+      window.dispatchEvent(new Event("auth-changed"));
+      
 
       if (data.role === "ADMIN") {
         router.replace("/admin");
