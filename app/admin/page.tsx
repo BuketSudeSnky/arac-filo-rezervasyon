@@ -4,18 +4,23 @@ import { useEffect, useState } from "react";
 
 import {
   getVehicles,
-  type Vehicle,
 } from "../../api/services/vehicleService";
 
 import {
   getReservations,
-  type Reservation,
 } from "../../api/services/reservationService";
+
+import {
+  getUsers,
+} from "../../api/services/userService";
 
 export default function AdminDashboardPage() {
   const [totalVehicles, setTotalVehicles] = useState(0);
-  const [activeReservations, setActiveReservations] = useState(0);
-  const [maintenanceVehicles, setMaintenanceVehicles] = useState(0);
+  const [activeReservations, setActiveReservations] =
+    useState(0);
+  const [maintenanceVehicles, setMaintenanceVehicles] =
+    useState(0);
+  const [totalUsers, setTotalUsers] = useState(0);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -28,37 +33,64 @@ export default function AdminDashboardPage() {
         setLoading(true);
         setError("");
 
-      const [vehicles, reservations] = await Promise.all([
-  getVehicles(),
-  getReservations(),
-]);
+        const [vehicles, reservations, users] =
+          await Promise.all([
+            getVehicles(),
+            getReservations(),
+            getUsers(),
+          ]);
 
         if (isCancelled) {
           return;
         }
 
         setTotalVehicles(vehicles.length);
+        setTotalUsers(users.length);
 
-        const maintenanceCount = vehicles.filter((vehicle) => {
-          const status = vehicle.status
-            ?.trim()
-            .toLocaleLowerCase("tr-TR");
+        const maintenanceCount = vehicles.filter(
+          (vehicle) => {
+            const status = vehicle.status
+              ?.trim()
+              .toLocaleLowerCase("tr-TR");
 
-          return (
-            status === "bakımda" ||
-            status === "maintenance"
-          );
-        }).length;
+            return (
+              status === "bakımda" ||
+              status === "maintenance"
+            );
+          }
+        ).length;
 
         setMaintenanceVehicles(maintenanceCount);
 
-        const activeReservationCount = reservations.filter(
-          (reservation) =>
-            reservation.status === "Planned" ||
-            reservation.status === "InProgress"
-        ).length;
+        const activeReservationCount =
+          reservations.filter((reservation) => {
+            const isActiveStatus =
+              reservation.status === "Planned" ||
+              reservation.status === "InProgress";
 
-        setActiveReservations(activeReservationCount);
+            if (!isActiveStatus) {
+              return false;
+            }
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const endDate = new Date(
+              `${reservation.endDate}T00:00:00`
+            );
+
+            if (Number.isNaN(endDate.getTime())) {
+              return false;
+            }
+
+            const isExpired = endDate < today;
+
+            return !isExpired;
+          }).length;
+
+        setActiveReservations(
+          activeReservationCount
+        );
       } catch (error) {
         console.error(
           "Admin dashboard verileri yüklenemedi:",
@@ -79,7 +111,7 @@ export default function AdminDashboardPage() {
       }
     }
 
-    loadDashboardData();
+    void loadDashboardData();
 
     return () => {
       isCancelled = true;
@@ -94,8 +126,8 @@ export default function AdminDashboardPage() {
         </h1>
 
         <p className="mt-2 text-gray-500">
-          Filo durumunu ve rezervasyonları buradan takip
-          edebilirsiniz.
+          Filo durumunu, rezervasyonları ve kullanıcıları
+          buradan takip edebilirsiniz.
         </p>
       </div>
 
@@ -126,8 +158,8 @@ export default function AdminDashboardPage() {
 
         <DashboardCard
           title="Toplam Kullanıcı"
-          value="-"
-          loading={false}
+          value={totalUsers}
+          loading={loading}
         />
       </div>
     </section>
