@@ -12,6 +12,7 @@ import { useToast } from "../../../components/ToastProvider";
 
 import {
   createVehicle,
+  getVehicles,
   type VehicleRequest,
 } from "../../../../api/services/vehicleService";
 
@@ -28,7 +29,6 @@ export default function YeniAracPage() {
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-
   const handleSubmit = async (
     event: FormEvent<HTMLFormElement>
   ) => {
@@ -44,9 +44,17 @@ export default function YeniAracPage() {
       .trim()
       .toLocaleUpperCase("tr-TR");
 
+      const formattedLicensePlate = licensePlate
+  .trim()
+  .replace(/\s+/g, " ")
+  .toLocaleUpperCase("tr-TR");
+
+const comparableLicensePlate =
+  normalizeLicensePlate(licensePlate);
+
     const normalizedMakeModel = makeModel.trim();
 
-    if (!normalizedLicensePlate) {
+    if (!comparableLicensePlate) {
       setError("Lütfen araç plakasını girin.");
       return;
     }
@@ -57,14 +65,32 @@ export default function YeniAracPage() {
     }
 
     const newVehicle: VehicleRequest = {
-      licensePlate: normalizedLicensePlate,
+      licensePlate: formattedLicensePlate,
       makeModel: normalizedMakeModel,
       type,
       status,
     };
 
     try {
+      
       setSaving(true);
+
+      const existingVehicles = await getVehicles();
+
+const plateAlreadyExists = existingVehicles.some(
+  (vehicle) =>
+    normalizeLicensePlate(vehicle.licensePlate) ===
+    comparableLicensePlate
+);
+
+if (plateAlreadyExists) {
+  const message =
+    "Bu plakaya sahip bir araç zaten kayıtlı.";
+
+  setError(message);
+  showToast(message, "error");
+  return;
+}
 
       await createVehicle(newVehicle);
 
@@ -86,6 +112,14 @@ export default function YeniAracPage() {
       setSaving(false);
     }
   };
+
+  function normalizeLicensePlate(value: string): string {
+  return value
+    .replace(/\s+/g, "")
+    .toLocaleUpperCase("tr-TR");
+}
+
+
 
   return (
     <section className="space-y-8">
