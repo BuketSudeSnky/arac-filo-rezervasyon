@@ -315,9 +315,6 @@ export default function AdminUsersPage() {
                                 "Kullanıcı adı yok"}
                             </p>
 
-                            <p className="mt-1 text-xs text-slate-400">
-                              Kullanıcı No: {user.id}
-                            </p>
                           </div>
                         </div>
                       </td>

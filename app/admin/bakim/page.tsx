@@ -8,60 +8,19 @@ import {
   type Vehicle,
 } from "../../../api/services/vehicleService";
 
-type MaintenanceStatus =
-  | "Reported"
-  | "InMaintenance"
-  | "Completed";
+import {
+  createMaintenanceRecord,
+  deleteMaintenanceRecord,
+  getMaintenanceRecords,
+  updateMaintenanceStatus,
+  type MaintenanceRecord,
+  type MaintenanceStatus,
+} from "../../../api/services/maintenanceService";
 
-
-type MaintenanceRecord = {
-  id: number;
-  vehicleId: number;
-  licensePlate: string;
-  makeModel: string;
-  title: string;
-  description: string;
-  reportedDate: string;
-  completedDate?: string;
-  status: MaintenanceStatus;
-};
-
-const INITIAL_MAINTENANCE_RECORDS: MaintenanceRecord[] = [
-  {
-    id: 1,
-    vehicleId: 1,
-    licensePlate: "34 ABC 123",
-    makeModel: "Ford Focus",
-    title: "Motor arıza lambası",
-    description:
-      "Gösterge panelinde motor arıza lambası yanıyor.",
-    reportedDate: "2026-07-20",
-    status: "Reported",
-  },
-  {
-    id: 2,
-    vehicleId: 2,
-    licensePlate: "34 XYZ 456",
-    makeModel: "Fiat Doblo",
-    title: "Periyodik bakım",
-    description:
-      "Yağ, filtre ve genel araç kontrolleri yapılacak.",
-    reportedDate: "2026-07-18",
-    status: "InMaintenance",
-  },
-  {
-    id: 3,
-    vehicleId: 3,
-    licensePlate: "06 KLM 789",
-    makeModel: "Renault Megane",
-    title: "Lastik değişimi",
-    description:
-      "Ön lastiklerde aşınma tespit edildi.",
-    reportedDate: "2026-07-10",
-    completedDate: "2026-07-12",
-    status: "Completed",
-  },
-];
+import {
+  clearLocalVehicleStatus,
+  setLocalVehicleStatus,
+} from "../../utils/VehicleStatus";
 
 const STATUS_OPTIONS: {
   value: MaintenanceStatus;
@@ -104,9 +63,14 @@ const [newRecord, setNewRecord] = useState({
   status: "Reported" as MaintenanceStatus,
 });
 
-  const [records, setRecords] = useState<MaintenanceRecord[]>(
-    INITIAL_MAINTENANCE_RECORDS
-  );
+  const [records, setRecords] =
+  useState<MaintenanceRecord[]>([]);
+
+const [recordsLoading, setRecordsLoading] =
+  useState(true);
+
+const [recordsError, setRecordsError] =
+  useState("");
 
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState("Tümü");
@@ -118,25 +82,38 @@ const [vehiclesLoading, setVehiclesLoading] = useState(true);
 const [vehiclesError, setVehiclesError] = useState("");
 
   const filteredRecords = useMemo(() => {
-    return records.filter((record) => {
-      const searchableText = `
-        ${record.licensePlate}
-        ${record.makeModel}
-        ${record.title}
-        ${record.description}
-      `.toLocaleLowerCase("tr-TR");
+  return records
+    .filter((record) => {
+      const normalizedSearch =
+        normalizeSearchText(searchText);
 
-      const matchesSearch = searchableText.includes(
-        searchText.toLocaleLowerCase("tr-TR")
-      );
+      const matchesSearch =
+        normalizedSearch === "" ||
+        normalizeSearchText(record.licensePlate).includes(
+          normalizedSearch
+        ) ||
+        normalizeSearchText(record.makeModel).includes(
+          normalizedSearch
+        ) ||
+        normalizeSearchText(record.title).includes(
+          normalizedSearch
+        ) ||
+        normalizeSearchText(record.description).includes(
+          normalizedSearch
+        );
 
       const matchesStatus =
         statusFilter === "Tümü" ||
         record.status === statusFilter;
 
       return matchesSearch && matchesStatus;
-    });
-  }, [records, searchText, statusFilter]);
+    })
+    .sort(
+      (a, b) =>
+        new Date(b.reportedDate).getTime() -
+        new Date(a.reportedDate).getTime()
+    );
+}, [records, searchText, statusFilter]);
 
   const reportedCount = records.filter(
     (record) => record.status === "Reported"
@@ -151,117 +128,314 @@ const [vehiclesError, setVehiclesError] = useState("");
   ).length;
 
   useEffect(() => {
-  const loadVehicles = async () => {
+  let isCancelled = false;
+
+  async function loadVehicles() {
     try {
       setVehiclesLoading(true);
       setVehiclesError("");
 
       const data = await getVehicles();
-      setVehicles(data);
-    } catch (error) {
-      console.error("Araçlar yüklenemedi:", error);
 
-      setVehiclesError(
-        error instanceof Error
-          ? error.message
-          : "Araçlar yüklenemedi."
+      if (!isCancelled) {
+        setVehicles(data);
+      }
+    } catch (error) {
+      console.error(
+        "Araçlar yüklenemedi:",
+        error
       );
+
+      if (!isCancelled) {
+        setVehiclesError(
+          error instanceof Error
+            ? error.message
+            : "Araçlar yüklenemedi."
+        );
+      }
     } finally {
-      setVehiclesLoading(false);
+      if (!isCancelled) {
+        setVehiclesLoading(false);
+      }
     }
-  };
+  }
 
   void loadVehicles();
+
+  return () => {
+    isCancelled = true;
+  };
 }, []);
 
-   const handleCreateRecord = (
+useEffect(() => {
+  let isCancelled = false;
+
+  async function loadMaintenanceRecords() {
+    try {
+      setRecordsLoading(true);
+      setRecordsError("");
+
+      const data =
+        await getMaintenanceRecords();
+
+      if (!isCancelled) {
+        setRecords(data);
+      }
+    } catch (error) {
+      console.error(
+        "Bakım kayıtları yüklenemedi:",
+        error
+      );
+
+      if (!isCancelled) {
+        setRecordsError(
+          error instanceof Error
+            ? error.message
+            : "Bakım kayıtları yüklenemedi."
+        );
+      }
+    } finally {
+      if (!isCancelled) {
+        setRecordsLoading(false);
+      }
+    }
+  }
+
+  void loadMaintenanceRecords();
+
+  return () => {
+    isCancelled = true;
+  };
+}, []);
+
+const handleCreateRecord = async (
   event: React.FormEvent<HTMLFormElement>
 ) => {
-  event.preventDefault();
+    event.preventDefault();
 
-if (!newRecord.vehicleId) {
-  showToast("Lütfen mevcut araçlardan birini seçin.", "error");
-  return;
-}
+  if (!newRecord.vehicleId) {
+    showToast(
+      "Lütfen mevcut araçlardan birini seçin.",
+      "error"
+    );
+    return;
+  }
 
-if (
-  !newRecord.title.trim() ||
-  !newRecord.description.trim() ||
-  !newRecord.reportedDate
-) {
-  showToast("Lütfen tüm alanları doldurun.", "error");
-  return;
-}
+  if (
+    !newRecord.title.trim() ||
+    !newRecord.description.trim() ||
+    !newRecord.reportedDate
+  ) {
+    showToast(
+      "Lütfen tüm alanları doldurun.",
+      "error"
+    );
+    return;
+  }
 
-  const record: MaintenanceRecord = {
-    id: Date.now(),
-    vehicleId: Number(newRecord.vehicleId),
-    licensePlate: newRecord.licensePlate.trim(),
-    makeModel: newRecord.makeModel.trim(),
-    title: newRecord.title.trim(),
-    description: newRecord.description.trim(),
-    reportedDate: newRecord.reportedDate,
-    status: newRecord.status,
-  };
+  try {
+    const createdRecord =
+      await createMaintenanceRecord({
+        vehicleId: Number(
+          newRecord.vehicleId
+        ),
+        title: newRecord.title.trim(),
+        description:
+          newRecord.description.trim(),
+        reportedDate:
+          newRecord.reportedDate,
+        status: newRecord.status,
+      });
 
-  setRecords((currentRecords) => [
-    record,
-    ...currentRecords,
-  ]);
+      setLocalVehicleStatus(
+  Number(newRecord.vehicleId),
+  "Bakımda"
+);
 
-  setNewRecord({
-    vehicleId: "",
-    licensePlate: "",
-    makeModel: "",
-    title: "",
-    description: "",
-    reportedDate: "",
-    status: "Reported",
-  });
+    setRecords((currentRecords) => [
+      createdRecord,
+      ...currentRecords,
+    ]);
 
-  setShowCreateForm(false);
-  showToast("Bakım kaydı başarıyla oluşturuldu.", "success");
+    setNewRecord({
+      vehicleId: "",
+      licensePlate: "",
+      makeModel: "",
+      title: "",
+      description: "",
+      reportedDate: "",
+      status: "Reported",
+    });
+
+    setShowCreateForm(false);
+
+    showToast(
+      "Bakım kaydı başarıyla oluşturuldu.",
+      "success"
+    );
+  } catch (error) {
+    console.error(
+      "Bakım kaydı oluşturulamadı:",
+      error
+    );
+
+    showToast(
+      error instanceof Error
+        ? error.message
+        : "Bakım kaydı oluşturulamadı.",
+      "error"
+    );
+  }
 };
 
-  const handleStatusChange = (
-    recordId: number,
-    newStatus: MaintenanceStatus
-  ) => {
+  const handleStatusChange = async (
+  recordId: number,
+  newStatus: MaintenanceStatus
+) => {
+  const currentRecord = records.find(
+    (record) => record.id === recordId
+  );
+
+  if (!currentRecord) {
+    showToast(
+      "Bakım kaydı bulunamadı.",
+      "error"
+    );
+    return;
+  }
+
+  if (currentRecord.status === "Completed") {
+    showToast(
+      "Tamamlanan kayıt yeniden düzenlenemez.",
+      "error"
+    );
+    return;
+  }
+
+  try {
+    const updatedRecord =
+      await updateMaintenanceStatus(
+        recordId,
+        newStatus
+      );
+
+      if (newStatus === "Completed") {
+  clearLocalVehicleStatus(
+    currentRecord.vehicleId
+  );
+
+  setVehicles((currentVehicles) =>
+    currentVehicles.map((vehicle) =>
+      vehicle.id === currentRecord.vehicleId
+        ? {
+            ...vehicle,
+            status: "Aktif",
+          }
+        : vehicle
+    )
+  );
+} else {
+  setLocalVehicleStatus(
+    currentRecord.vehicleId,
+    "Bakımda"
+  );
+
+  setVehicles((currentVehicles) =>
+    currentVehicles.map((vehicle) =>
+      vehicle.id === currentRecord.vehicleId
+        ? {
+            ...vehicle,
+            status: "Bakımda",
+          }
+        : vehicle
+    )
+  );
+}
+
     setRecords((currentRecords) =>
-      currentRecords.map((record) => {
-        if (record.id !== recordId) {
-          return record;
-        }
-
-
-        return {
-          ...record,
-          status: newStatus,
-          completedDate:
-            newStatus === "Completed"
-              ? new Date().toISOString().split("T")[0]
-              : undefined,
-        };
-      })
-    );
-  };
-
-  const handleDelete = (recordId: number) => {
-    const confirmed = window.confirm(
-      "Bu bakım veya arıza kaydını silmek istediğinizden emin misiniz?"
+      currentRecords.map((record) =>
+        record.id === recordId
+          ? updatedRecord
+          : record
+      )
     );
 
-    if (!confirmed) {
-      return;
-    }
+    showToast(
+      "Kayıt durumu güncellendi.",
+      "success"
+    );
+  } catch (error) {
+    console.error(
+      "Bakım durumu güncellenemedi:",
+      error
+    );
+
+    showToast(
+      error instanceof Error
+        ? error.message
+        : "Kayıt durumu güncellenemedi.",
+      "error"
+    );
+  }
+};
+ const handleDelete = async (
+  recordId: number
+) => {
+  const record = records.find(
+    (item) => item.id === recordId
+  );
+
+  if (!record) {
+    showToast(
+      "Bakım kaydı bulunamadı.",
+      "error"
+    );
+    return;
+  }
+
+  if (record.status === "Completed") {
+    showToast(
+      "Tamamlanan kayıt silinemez.",
+      "error"
+    );
+    return;
+  }
+
+  const confirmed = window.confirm(
+    "Bu bakım veya arıza kaydını silmek istediğinizden emin misiniz?"
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    await deleteMaintenanceRecord(recordId);
 
     setRecords((currentRecords) =>
       currentRecords.filter(
-        (record) => record.id !== recordId
+        (item) => item.id !== recordId
       )
     );
-    showToast("Kayıt başarıyla silindi.", "success");
-  };
+
+    showToast(
+      "Kayıt başarıyla silindi.",
+      "success"
+    );
+  } catch (error) {
+    console.error(
+      "Bakım kaydı silinemedi:",
+      error
+    );
+
+    showToast(
+      error instanceof Error
+        ? error.message
+        : "Bakım kaydı silinemedi.",
+      "error"
+    );
+  }
+};
 
   return (
     <section>
@@ -355,126 +529,160 @@ if (
       </div>
 
       {/* Tablo */}
-      <div className="overflow-hidden rounded-xl bg-white shadow-sm">
-        {filteredRecords.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
-            Kriterlere uygun bakım veya arıza kaydı bulunamadı.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1100px] text-left">
-              <thead className="bg-gray-50 text-sm text-gray-600">
-                <tr>
-                  <th className="px-6 py-4 font-semibold">
-                    Araç
-                  </th>
+      {/* Tablo */}
+<div className="overflow-hidden rounded-xl bg-white shadow-sm">
+  {recordsLoading ? (
+    <div className="p-10 text-center text-gray-500">
+      Bakım ve arıza kayıtları yükleniyor...
+    </div>
+  ) : recordsError ? (
+    <div className="p-10 text-center text-red-600">
+      {recordsError}
+    </div>
+  ) : filteredRecords.length === 0 ? (
+    <div className="p-8 text-center text-gray-500">
+      Kriterlere uygun bakım veya arıza kaydı
+      bulunamadı.
+    </div>
+  ) : (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[1100px] text-left">
+        <thead className="bg-gray-50 text-sm text-gray-600">
+          <tr>
+            <th className="px-6 py-4 font-semibold">
+              Araç
+            </th>
 
-                  <th className="px-6 py-4 font-semibold">
-                    Kayıt
-                  </th>
+            <th className="px-6 py-4 font-semibold">
+              Kayıt
+            </th>
 
-                  <th className="px-6 py-4 font-semibold">
-                    Bildirim Tarihi
-                  </th>
+            <th className="px-6 py-4 font-semibold">
+              Bildirim Tarihi
+            </th>
 
-                  <th className="px-6 py-4 font-semibold">
-                    Durum
-                  </th>
+            <th className="px-6 py-4 font-semibold">
+              Durum
+            </th>
 
-                  <th className="px-6 py-4 text-right font-semibold">
-                    İşlemler
-                  </th>
-                </tr>
-              </thead>
+            <th className="px-6 py-4 text-right font-semibold">
+              İşlemler
+            </th>
+          </tr>
+        </thead>
 
-              <tbody className="divide-y">
-                {filteredRecords.map((record) => (
-                  <tr
-                    key={record.id}
-                    className="transition hover:bg-gray-50"
-                  >
-                    <td className="px-6 py-4">
-                      <p className="font-semibold text-gray-800">
-                        {record.licensePlate}
-                      </p>
+        <tbody className="divide-y">
+          {filteredRecords.map((record) => {
+            const isCompleted =
+              record.status === "Completed";
 
-                      <p className="text-sm text-gray-500">
-                        {record.makeModel}
-                      </p>
-                    </td>
+            return (
+              <tr
+                key={record.id}
+                className={`transition ${
+                  isCompleted
+                    ? "bg-gray-50 opacity-75"
+                    : "hover:bg-gray-50"
+                }`}
+              >
+                <td className="px-6 py-4">
+                  <p className="font-semibold text-gray-800">
+                    {record.licensePlate}
+                  </p>
 
-                    <td className="max-w-[280px] px-6 py-4">
-                      <p className="font-medium text-gray-800">
-                        {record.title}
-                      </p>
+                  <p className="text-sm text-gray-500">
+                    {record.makeModel}
+                  </p>
+                </td>
 
-                      <p className="mt-1 line-clamp-2 text-sm text-gray-500">
-                        {record.description}
-                      </p>
-                    </td>
+                <td className="max-w-[280px] px-6 py-4">
+                  <p className="font-medium text-gray-800">
+                    {record.title}
+                  </p>
 
-                    <td className="px-6 py-4 text-gray-700">
-                      {formatDate(record.reportedDate)}
-                    </td>
+                  <p className="mt-1 line-clamp-2 text-sm text-gray-500">
+                    {record.description}
+                  </p>
+                </td>
 
-                    <td className="px-6 py-4">
-                      <MaintenanceStatusBadge
-                        status={record.status}
-                      />
-                    </td>
+                <td className="px-6 py-4 text-gray-700">
+                  {formatDate(record.reportedDate)}
+                </td>
 
-                    <td className="px-6 py-4">
-                      <div className="flex justify-end gap-2">
-                        <select
-                          value={record.status}
-                          onChange={(event) =>
-                            handleStatusChange(
-                              record.id,
-                              event.target
-                                .value as MaintenanceStatus
-                            )
-                          }
-                          className="rounded-lg border bg-white px-3 py-2 text-sm outline-none focus:border-[#0B4EA2]"
+                <td className="px-6 py-4">
+                  <MaintenanceStatusBadge
+                    status={record.status}
+                  />
+
+                  {isCompleted && (
+                    <p className="mt-2 text-xs font-semibold text-gray-500">
+                      Kayıt kapatıldı
+                    </p>
+                  )}
+                </td>
+
+                <td className="px-6 py-4">
+                  <div className="flex justify-end gap-2">
+                    <select
+                      value={record.status}
+                      onChange={(event) =>
+                        void handleStatusChange(
+                          record.id,
+                          event.target
+                            .value as MaintenanceStatus
+                        )
+                      }
+                      disabled={isCompleted}
+                      className={`rounded-lg border px-3 py-2 text-sm outline-none ${
+                        isCompleted
+                          ? "cursor-not-allowed bg-gray-100 text-gray-500"
+                          : "bg-white focus:border-[#0B4EA2]"
+                      }`}
+                    >
+                      {STATUS_OPTIONS.map((status) => (
+                        <option
+                          key={status.value}
+                          value={status.value}
                         >
-                          {STATUS_OPTIONS.map((status) => (
-                            <option
-                              key={status.value}
-                              value={status.value}
-                            >
-                              {status.label}
-                            </option>
-                          ))}
-                        </select>
+                          {status.label}
+                        </option>
+                      ))}
+                    </select>
 
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setSelectedRecord(record)
-                          }
-                          className="rounded-lg border border-[#0B4EA2] px-3 py-2 text-sm font-semibold text-[#0B4EA2] transition hover:bg-blue-50"
-                        >
-                          Detay
-                        </button>
-                       
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedRecord(record)
+                      }
+                      className="rounded-lg border border-[#0B4EA2] px-3 py-2 text-sm font-semibold text-[#0B4EA2] transition hover:bg-blue-50"
+                    >
+                      Detay
+                    </button>
 
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleDelete(record.id)
-                          }
-                          className="rounded-lg border border-red-500 px-3 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50"
-                        >
-                          Sil
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                    <button
+                      type="button"
+                      disabled={isCompleted}
+                      onClick={() =>
+                        void handleDelete(record.id)
+                      }
+                      className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                        isCompleted
+                          ? "cursor-not-allowed bg-gray-200 text-gray-500"
+                          : "border border-red-500 text-red-600 hover:bg-red-50"
+                      }`}
+                    >
+                      Sil
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  )}
+</div>
 
       {selectedRecord && (
         <MaintenanceDetailModal

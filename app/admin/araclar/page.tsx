@@ -16,7 +16,18 @@ import {
   type Vehicle,
 } from "../../../api/services/vehicleService";
 
+import {
+  applyLocalVehicleStatus,
+} from "../../utils/VehicleStatus";
+
 type IconProps = SVGProps<SVGSVGElement>;
+
+function normalizeSearchText(value: string): string {
+  return value
+    .toLocaleLowerCase("tr-TR")
+    .replace(/\s+/g, "")
+    .trim();
+}
 
 export default function AdminVehiclesPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -49,7 +60,9 @@ export default function AdminVehiclesPage() {
         }
 
         if (!isCancelled) {
-          setVehicles(data);
+          setVehicles(
+  data.map(applyLocalVehicleStatus)
+);
         }
       } catch (error) {
         console.error("Araç yükleme hatası:", error);
@@ -90,7 +103,9 @@ export default function AdminVehiclesPage() {
         );
       }
 
-      setVehicles(data);
+      setVehicles(
+  data.map(applyLocalVehicleStatus)
+);
     } catch (error) {
       console.error("Araç yükleme hatası:", error);
 
@@ -107,39 +122,55 @@ export default function AdminVehiclesPage() {
   }
 
   const filteredVehicles = useMemo(() => {
-    const normalizedSearchText = searchText
+  const normalizedSearch =
+    normalizeSearchText(searchText);
+
+  const normalizedStatusFilter =
+    statusFilter
       .trim()
       .toLocaleLowerCase("tr-TR");
 
-    const normalizedStatusFilter = statusFilter
-      .trim()
-      .toLocaleLowerCase("tr-TR");
+  return vehicles.filter((vehicle) => {
+    const normalizedLicensePlate =
+      normalizeSearchText(
+        vehicle.licensePlate ?? ""
+      );
 
-    return vehicles.filter((vehicle) => {
-      const searchableText = [
-        vehicle.licensePlate,
-        vehicle.makeModel,
-        vehicle.type,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLocaleLowerCase("tr-TR");
+    const normalizedMakeModel =
+      normalizeSearchText(
+        vehicle.makeModel ?? ""
+      );
 
-      const vehicleStatus = vehicle.status
+    const normalizedType =
+      normalizeSearchText(
+        vehicle.type ?? ""
+      );
+
+    const matchesSearch =
+      normalizedSearch === "" ||
+      normalizedLicensePlate.includes(
+        normalizedSearch
+      ) ||
+      normalizedMakeModel.includes(
+        normalizedSearch
+      ) ||
+      normalizedType.includes(
+        normalizedSearch
+      );
+
+    const normalizedVehicleStatus =
+      vehicle.status
         ?.trim()
         .toLocaleLowerCase("tr-TR");
 
-      const matchesSearch =
-        normalizedSearchText === "" ||
-        searchableText.includes(normalizedSearchText);
+    const matchesStatus =
+      statusFilter === "Tümü" ||
+      normalizedVehicleStatus ===
+        normalizedStatusFilter;
 
-      const matchesStatus =
-        statusFilter === "Tümü" ||
-        vehicleStatus === normalizedStatusFilter;
-
-      return matchesSearch && matchesStatus;
-    });
-  }, [vehicles, searchText, statusFilter]);
+    return matchesSearch && matchesStatus;
+  });
+}, [vehicles, searchText, statusFilter]);
 
 
 

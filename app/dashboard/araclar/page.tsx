@@ -15,6 +15,11 @@ import {
   type Vehicle,
 } from "../../../api/services/vehicleService";
 
+import {
+  applyLocalVehicleStatus,
+  isVehicleAvailable,
+} from "../../utils/VehicleStatus";
+
 type IconProps = SVGProps<SVGSVGElement>;
 
 export default function DashboardAraclarPage() {
@@ -56,7 +61,11 @@ export default function DashboardAraclarPage() {
         const data = await getVehicles();
 
         if (!isCancelled) {
-          setAraclar(data);
+          setAraclar(
+  data
+    .map(applyLocalVehicleStatus)
+    .filter(isVehicleAvailable)
+);
         }
       } catch (error) {
         console.error("Araçlar alınamadı:", error);
@@ -121,7 +130,11 @@ export default function DashboardAraclarPage() {
         bitisTarihi
       );
 
-      setAraclar(data);
+      setAraclar(
+  data
+    .map(applyLocalVehicleStatus)
+    .filter(isVehicleAvailable)
+);
       setMusaitAraclarGetirildi(true);
     } catch (error) {
       console.error(

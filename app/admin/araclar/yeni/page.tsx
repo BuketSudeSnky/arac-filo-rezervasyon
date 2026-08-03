@@ -40,10 +40,6 @@ export default function YeniAracPage() {
 
     setError("");
 
-    const normalizedLicensePlate = licensePlate
-      .trim()
-      .toLocaleUpperCase("tr-TR");
-
       const formattedLicensePlate = licensePlate
   .trim()
   .replace(/\s+/g, " ")

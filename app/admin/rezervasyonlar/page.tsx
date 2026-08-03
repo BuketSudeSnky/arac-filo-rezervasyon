@@ -19,6 +19,12 @@ import {
 } from "../../../api/services/reservationService";
 
 type IconProps = SVGProps<SVGSVGElement>;
+function normalizeSearchText(value: string): string {
+  return value
+    .toLocaleLowerCase("tr-TR")
+    .replace(/\s+/g, "")
+    .trim();
+}
 
 const STATUS_OPTIONS: {
   value: ReservationStatus;
@@ -109,40 +115,58 @@ export default function AdminReservationsPage() {
   }, []);
 
   const filteredReservations = useMemo(() => {
-    const normalizedSearchText = searchText
-      .trim()
-      .toLocaleLowerCase("tr-TR");
+  const normalizedSearch =
+    normalizeSearchText(searchText);
 
-    return [...reservations]
-      .filter((reservation) => {
-        const searchableText = [
-          reservation.username,
-          reservation.vehicle?.licensePlate,
-          reservation.vehicle?.makeModel,
-          reservation.purpose,
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLocaleLowerCase("tr-TR");
-
-        const matchesSearch =
-          normalizedSearchText === "" ||
-          searchableText.includes(
-            normalizedSearchText
-          );
-
-        const matchesStatus =
-          statusFilter === "Tümü" ||
-          reservation.status === statusFilter;
-
-        return matchesSearch && matchesStatus;
-      })
-      .sort((firstReservation, secondReservation) => {
-        return (
-          secondReservation.id - firstReservation.id
+  return [...reservations]
+    .filter((reservation) => {
+      const normalizedUsername =
+        normalizeSearchText(
+          reservation.username ?? ""
         );
-      });
-  }, [reservations, searchText, statusFilter]);
+
+      const normalizedLicensePlate =
+        normalizeSearchText(
+          reservation.vehicle?.licensePlate ?? ""
+        );
+
+      const normalizedMakeModel =
+        normalizeSearchText(
+          reservation.vehicle?.makeModel ?? ""
+        );
+
+      const normalizedPurpose =
+        normalizeSearchText(
+          reservation.purpose ?? ""
+        );
+
+      const matchesSearch =
+        normalizedSearch === "" ||
+        normalizedUsername.includes(
+          normalizedSearch
+        ) ||
+        normalizedLicensePlate.includes(
+          normalizedSearch
+        ) ||
+        normalizedMakeModel.includes(
+          normalizedSearch
+        ) ||
+        normalizedPurpose.includes(
+          normalizedSearch
+        );
+
+      const matchesStatus =
+        statusFilter === "Tümü" ||
+        reservation.status === statusFilter;
+
+      return matchesSearch && matchesStatus;
+    })
+    .sort(
+      (firstReservation, secondReservation) =>
+        secondReservation.id -
+        firstReservation.id
+    );
+}, [reservations, searchText, statusFilter]);
 
   async function reloadReservations() {
     try {
