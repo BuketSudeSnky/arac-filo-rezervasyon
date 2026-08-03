@@ -233,8 +233,6 @@ router.refresh();
               <option value="">Tür seçin</option>
               <option value="Binek">Binek</option>
               <option value="Ticari">Ticari</option>
-              <option value="SUV">SUV</option>
-              <option value="Minibüs">Minibüs</option>
             </select>
           </div>
 

@@ -571,9 +571,9 @@ setMaintenanceRecords(maintenanceData);
         />
       </div>
 
-      {/* Rezervasyon trendi */}
+      {/* Rezervasyon İstatistikleri */}
       <ReportCard
-        title="Rezervasyon Trendi"
+        title="Rezervasyon İstatistikleri"
         description={`${getPeriodLabel(
           period
         )} içindeki rezervasyon sayıları`}

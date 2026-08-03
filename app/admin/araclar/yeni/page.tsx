@@ -40,10 +40,13 @@ export default function YeniAracPage() {
 
     setError("");
 
+    
       const formattedLicensePlate = licensePlate
   .trim()
   .replace(/\s+/g, " ")
   .toLocaleUpperCase("tr-TR");
+
+  
 
 const comparableLicensePlate =
   normalizeLicensePlate(licensePlate);
@@ -108,7 +111,19 @@ if (plateAlreadyExists) {
       setSaving(false);
     }
   };
+function formatLicensePlate(value: string): string {
+  const cleaned = value
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
 
+  const match = cleaned.match(/^(\d{0,2})([A-Z]{0,3})(\d{0,4})$/);
+
+  if (!match) return cleaned;
+
+  const [, city, letters, numbers] = match;
+
+  return [city, letters, numbers].filter(Boolean).join(" ");
+}
   function normalizeLicensePlate(value: string): string {
   return value
     .replace(/\s+/g, "")
@@ -185,7 +200,7 @@ if (plateAlreadyExists) {
                   type="text"
                   value={licensePlate}
                   onChange={(event) =>
-                    setLicensePlate(event.target.value)
+                    setLicensePlate(formatLicensePlate(event.target.value))
                   }
                   placeholder="34 ABC 123"
                   autoComplete="off"
