@@ -91,25 +91,6 @@ const vehicleUsageConfig = {
   },
 } satisfies ChartConfig;
 
-const vehicleStatusConfig = {
-  active: {
-    label: "Aktif",
-    color: "var(--chart-1)",
-  },
-  maintenance: {
-    label: "Bakımda",
-    color: "var(--chart-2)",
-  },
-  passive: {
-    label: "Pasif",
-    color: "var(--chart-3)",
-  },
-  other: {
-    label: "Diğer",
-    color: "var(--chart-4)",
-  },
-} satisfies ChartConfig;
-
 const userActivityConfig = {
   count: {
     label: "Rezervasyon",
@@ -382,77 +363,6 @@ setMaintenanceRecords(maintenanceData);
       vehicles,
     ]);
 
-  const vehicleStatusData =
-    useMemo(() => {
-      const counters = {
-        active: 0,
-        maintenance: 0,
-        passive: 0,
-        other: 0,
-      };
-
-      vehicles.forEach((vehicle) => {
-        const normalizedStatus =
-          normalizeText(vehicle.status);
-
-        if (
-          normalizedStatus === "aktif" ||
-          normalizedStatus === "active"
-        ) {
-          counters.active += 1;
-          return;
-        }
-
-        if (
-          normalizedStatus === "bakımda" ||
-          normalizedStatus === "bakimda" ||
-          normalizedStatus ===
-            "maintenance"
-        ) {
-          counters.maintenance += 1;
-          return;
-        }
-
-        if (
-          normalizedStatus === "pasif" ||
-          normalizedStatus === "passive"
-        ) {
-          counters.passive += 1;
-          return;
-        }
-
-        counters.other += 1;
-      });
-
-      return [
-        {
-          status: "active",
-          label: "Aktif",
-          count: counters.active,
-          fill: "var(--color-active)",
-        },
-        {
-          status: "maintenance",
-          label: "Bakımda",
-          count: counters.maintenance,
-          fill: "var(--color-maintenance)",
-        },
-        {
-          status: "passive",
-          label: "Pasif",
-          count: counters.passive,
-          fill: "var(--color-passive)",
-        },
-        {
-          status: "other",
-          label: "Diğer",
-          count: counters.other,
-          fill: "var(--color-other)",
-        },
-      ].filter(
-        (item) => item.count > 0
-      );
-    }, [vehicles]);
 
   const mostActiveUsers =
     useMemo(() => {
@@ -534,7 +444,7 @@ setMaintenanceRecords(maintenanceData);
       <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
         <div>
           <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-amber-600">
-            Analiz ve Raporlama
+            Analiz ve Raporlar
           </p>
 
           <h1 className="text-3xl font-bold tracking-tight text-slate-950">
@@ -608,7 +518,6 @@ setMaintenanceRecords(maintenanceData);
         <SummaryCard
           title="Toplam Araç"
           value={vehicles.length}
-          description="Sistemde kayıtlı araç"
           icon={
             <CarIcon className="h-6 w-6" />
           }
@@ -617,7 +526,6 @@ setMaintenanceRecords(maintenanceData);
         <SummaryCard
           title="Toplam Kullanıcı"
           value={users.length}
-          description="Sisteme kayıtlı kullanıcı"
           icon={
             <UsersIcon className="h-6 w-6" />
           }
@@ -628,7 +536,6 @@ setMaintenanceRecords(maintenanceData);
           value={
             filteredReservations.length
           }
-          description={getPeriodLabel(period)}
           icon={
             <CalendarIcon className="h-6 w-6" />
           }
@@ -638,7 +545,6 @@ setMaintenanceRecords(maintenanceData);
   value={
     filteredMaintenanceRecords.length
   }
-  description={getPeriodLabel(period)}
   icon={
     <ToolsIcon className="h-6 w-6" />
   }
@@ -1017,13 +923,11 @@ setMaintenanceRecords(maintenanceData);
 function SummaryCard({
   title,
   value,
-  description,
   icon,
   mock = false,
 }: {
   title: string;
   value: number;
-  description: string;
   icon: React.ReactNode;
   mock?: boolean;
 }) {
@@ -1037,10 +941,6 @@ function SummaryCard({
 
           <p className="mt-3 text-3xl font-bold tracking-tight text-slate-950">
             {value}
-          </p>
-
-          <p className="mt-2 text-xs text-slate-400">
-            {description}
           </p>
         </div>
 
