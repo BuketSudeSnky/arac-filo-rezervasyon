@@ -1320,11 +1320,6 @@ function formatDateKey(date: Date) {
   ).padStart(2, "0")}`;
 }
 
-function normalizeText(value: string) {
-  return value
-    ?.trim()
-    .toLocaleLowerCase("tr-TR");
-}
 
 function hasChartData<
   T extends Record<string, unknown>,
