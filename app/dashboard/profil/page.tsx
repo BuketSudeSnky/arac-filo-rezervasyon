@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import {
   useEffect,
   useState,
@@ -8,8 +10,11 @@ import {
 
 import {
   getCurrentUser,
+  updateCurrentUserProfile,
+  changeCurrentUserPassword,
   type User,
 } from "../../../api/services/userService";
+
 
 type IconProps = SVGProps<SVGSVGElement>;
 
@@ -78,10 +83,6 @@ export default function ProfilPage() {
           Profilim
         </h1>
 
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-          Hesabınıza ait kullanıcı bilgilerini
-          görüntüleyin.
-        </p>
       </div>
 
       {error && (
@@ -111,46 +112,55 @@ export default function ProfilPage() {
               <h2 className="text-lg font-bold text-slate-950">
                 Kullanıcı Bilgileri
               </h2>
-
-              <p className="mt-1 text-sm text-slate-500">
-                Hesabınıza kayıtlı temel bilgiler.
-              </p>
             </div>
+           <Link
+    href="/dashboard/profil/duzenle"
+    className="inline-flex items-center justify-center rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-4 focus:ring-amber-100"
+  >
+    Bilgileri Düzenle
+  </Link>
+  
+           <div className="grid gap-5 p-6 sm:grid-cols-2">
 
-            <div className="grid gap-5 p-6 sm:grid-cols-2">
-              <ProfileField
-                label="Kullanıcı adı"
-                value={user.username}
-                icon={
-                  <UserIcon className="h-5 w-5" />
-                }
-              />
+  <ProfileField
+    label="Kullanıcı Adı"
+    value={user.username}
+    icon={<UserIcon className="h-5 w-5" />}
+  />
 
-              <ProfileField
-                label="Kullanıcı rolü"
-                value={formatRole(user.role)}
-                icon={
-                  <ShieldIcon className="h-5 w-5" />
-                }
-              />
+  <ProfileField
+    label="Rol"
+    value={formatRole(user.role)}
+    icon={<ShieldIcon className="h-5 w-5" />}
+  />
 
-              <ProfileField
-                label="Kullanıcı numarası"
-                value={String(user.id)}
-                icon={
-                  <IdIcon className="h-5 w-5" />
-                }
-              />
+  <ProfileField
+    label="E-posta"
+    value={user.email ?? "Belirtilmedi"}
+    icon={<MailIcon className="h-5 w-5" />}
+  />
 
-              <ProfileField
-                label="Hesap durumu"
-                value="Aktif"
-                icon={
-                  <CheckIcon className="h-5 w-5" />
-                }
-              />
-            </div>
+  <ProfileField
+    label="Telefon"
+    value={user.phoneNumber ?? "Belirtilmedi"}
+    icon={<PhoneIcon className="h-5 w-5" />}
+  />
+
+  <ProfileField
+    label="Kullanıcı No"
+    value={String(user.id)}
+    icon={<IdIcon className="h-5 w-5" />}
+  />
+
+  <ProfileField
+    label="Kayıt Tarihi"
+    value={formatDate(user.createdAt)}
+    icon={<CalendarIcon className="h-5 w-5" />}
+  />
+
+</div>
           </div>
+
         </div>
       )}
     </section>
@@ -176,16 +186,41 @@ function ProfileSummaryCard({
         {user.username}
       </h2>
 
-      <p className="mt-2 text-sm text-slate-400">
-        {formatRole(user.role)}
-      </p>
+      <div className="mt-2 space-y-1">
 
-      <div className="mt-6 border-t border-slate-800 pt-5">
-        <div className="inline-flex items-center gap-2 rounded-full border border-emerald-800 bg-emerald-950 px-3 py-1.5 text-xs font-semibold text-emerald-300">
-          <span className="h-2 w-2 rounded-full bg-emerald-400" />
-          Aktif hesap
-        </div>
+</div>
+
+     <div className="mt-10">
+  <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+    <div className="flex items-center gap-3">
+      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-400 text-slate-950">
+        <LockIcon className="h-5 w-5" />
       </div>
+
+      <div>
+        <h3 className="text-sm font-bold text-white">
+          Hesap Güvenliği
+        </h3>
+
+        <p className="mt-1 text-xs leading-5 text-slate-400">
+          Şifrenizi güvenli şekilde güncelleyin.
+        </p>
+      </div>
+    </div>
+
+    <Link
+      href="/dashboard/profil/sifre"
+      className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-amber-400 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-amber-300"
+    >
+      Şifreyi Değiştir
+    </Link>
+  </div>
+
+  <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-emerald-800 bg-emerald-950 px-3 py-1.5 text-xs font-semibold text-emerald-300">
+    <span className="h-2 w-2 rounded-full bg-emerald-400" />
+    Aktif hesap
+  </div>
+</div>
     </article>
   );
 }
@@ -234,6 +269,19 @@ function ProfileSkeleton() {
         <div className="h-72 animate-pulse rounded-2xl bg-slate-200" />
       </div>
     </section>
+  );
+}
+
+function formatDate(date: string | null) {
+  if (!date) return "Belirtilmedi";
+
+  return new Date(date).toLocaleDateString(
+    "tr-TR",
+    {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    }
   );
 }
 
@@ -312,22 +360,6 @@ function IdIcon(props: IconProps) {
   );
 }
 
-function CheckIcon(props: IconProps) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <path d="m5 12 4 4L19 6" />
-    </svg>
-  );
-}
-
 function AlertIcon(props: IconProps) {
   return (
     <svg
@@ -342,6 +374,88 @@ function AlertIcon(props: IconProps) {
       <circle cx="12" cy="12" r="9" />
       <path d="M12 8v5" />
       <path d="M12 17h.01" />
+    </svg>
+  );
+}
+function MailIcon(props: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      {...props}
+    >
+      <rect
+        x="3"
+        y="5"
+        width="18"
+        height="14"
+        rx="2"
+      />
+
+      <path d="m3 7 9 6 9-6" />
+    </svg>
+  );
+}
+
+function PhoneIcon(props: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      {...props}
+    >
+      <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.8a2 2 0 0 1-.4 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z"/>
+    </svg>
+  );
+}
+function CalendarIcon(props: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      {...props}
+    >
+      <rect
+        x="3"
+        y="5"
+        width="18"
+        height="16"
+        rx="2"
+      />
+
+      <path d="M16 3v4" />
+
+      <path d="M8 3v4" />
+
+      <path d="M3 10h18" />
+    </svg>
+  );
+}
+function LockIcon(props: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <rect
+        x="4"
+        y="10"
+        width="16"
+        height="11"
+        rx="2"
+      />
+      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
     </svg>
   );
 }

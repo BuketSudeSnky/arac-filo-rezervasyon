@@ -19,11 +19,6 @@ import { tr } from "date-fns/locale";
 
 import type { Vehicle } from "../../../../api/services/vehicleService";
 
-import {
-  applyLocalVehicleStatus,
-  isVehicleAvailable,
-} from "../../../utils/VehicleStatus";
-
 function formatDateForApi(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -107,13 +102,9 @@ export default function YeniRezervasyonPage() {
   endDate
 );
 
-const filteredVehicles = vehicles
-  .map(applyLocalVehicleStatus)
-  .filter(isVehicleAvailable);
+setAvailableVehicles(vehicles);
 
-setAvailableVehicles(filteredVehicles);
-
-if (filteredVehicles.length === 0) {
+if (vehicles.length === 0) {
   setError(
     "Seçilen tarihler arasında rezervasyona uygun araç bulunamadı."
   );
@@ -162,6 +153,8 @@ if (filteredVehicles.length === 0) {
       setError("Müsait araçlardan birini seçin.");
       return;
     }
+    
+
 
     if (!purpose.trim()) {
       setError("Rezervasyon amacını girin.");

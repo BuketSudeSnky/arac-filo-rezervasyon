@@ -250,19 +250,35 @@ export default function YeniRezervasyonPage() {
         "/dashboard/rezervasyonlarim"
       );
     } catch (error) {
-      console.error(
-        "Rezervasyon oluşturma hatası:",
-        error
-      );
+  console.error(
+    "Rezervasyon oluşturma hatası:",
+    error
+  );
 
-      setSubmitError(
-        error instanceof Error
-          ? error.message
-          : "Rezervasyon oluşturulamadı."
-      );
-    } finally {
-      setSaving(false);
-    }
+  const message =
+    error instanceof Error
+      ? error.message
+      : "Rezervasyon oluşturulamadı.";
+
+  setSubmitError(message);
+
+  if (
+    message
+      .toLocaleLowerCase("tr-TR")
+      .includes("bakımda")
+  ) {
+    setSelectedRange(undefined);
+    setStartDate("");
+    setEndDate("");
+
+    window.setTimeout(() => {
+      router.push("/dashboard/araclar");
+      router.refresh();
+    }, 1800);
+  }
+} finally {
+  setSaving(false);
+}
   }
 
   return (

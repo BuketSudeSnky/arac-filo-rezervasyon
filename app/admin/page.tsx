@@ -18,9 +18,7 @@ import {
   getUsers,
 } from "../../api/services/userService";
 
-import {
-  applyLocalVehicleStatus,
-} from "../utils/VehicleStatus";
+
 
 type IconProps = SVGProps<SVGSVGElement>;
 
@@ -69,19 +67,13 @@ export default function AdminDashboardPage() {
           return;
         }
 
-        const vehiclesWithLocalStatus =
-          vehicleData.map(
-            applyLocalVehicleStatus
-          );
 
-        setTotalVehicles(
-          vehiclesWithLocalStatus.length
-        );
+        setTotalVehicles(vehicleData.length);
 
         setTotalUsers(userData.length);
 
         const maintenanceCount =
-          vehiclesWithLocalStatus.filter(
+  vehicleData.filter(
             (vehicle) => {
               const normalizedStatus =
                 vehicle.status

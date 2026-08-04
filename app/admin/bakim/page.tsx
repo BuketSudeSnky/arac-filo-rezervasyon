@@ -17,10 +17,6 @@ import {
   type MaintenanceStatus,
 } from "../../../api/services/maintenanceService";
 
-import {
-  clearLocalVehicleStatus,
-  setLocalVehicleStatus,
-} from "../../utils/VehicleStatus";
 
 const STATUS_OPTIONS: {
   value: MaintenanceStatus;
@@ -80,6 +76,31 @@ const [recordsError, setRecordsError] =
 const [vehicles, setVehicles] = useState<Vehicle[]>([]);
 const [vehiclesLoading, setVehiclesLoading] = useState(true);
 const [vehiclesError, setVehiclesError] = useState("");
+async function refreshVehicles() {
+  try {
+    const data = await getVehicles();
+
+    if (!Array.isArray(data)) {
+      throw new Error(
+        "Backend araç listesini beklenen formatta döndürmedi."
+      );
+    }
+
+    setVehicles(data);
+    setVehiclesError("");
+  } catch (error) {
+    console.error(
+      "Araç listesi yenilenemedi:",
+      error
+    );
+
+    setVehiclesError(
+      error instanceof Error
+        ? error.message
+        : "Araç listesi yenilenemedi."
+    );
+  }
+}
 
   const filteredRecords = useMemo(() => {
   return records
@@ -247,10 +268,6 @@ const handleCreateRecord = async (
         status: newRecord.status,
       });
 
-      setLocalVehicleStatus(
-  Number(newRecord.vehicleId),
-  "Bakımda"
-);
 
     setRecords((currentRecords) => [
       createdRecord,
@@ -301,6 +318,7 @@ const handleCreateRecord = async (
       "Bakım kaydı bulunamadı.",
       "error"
     );
+
     return;
   }
 
@@ -309,6 +327,11 @@ const handleCreateRecord = async (
       "Tamamlanan kayıt yeniden düzenlenemez.",
       "error"
     );
+
+    return;
+  }
+
+  if (currentRecord.status === newStatus) {
     return;
   }
 
@@ -319,39 +342,6 @@ const handleCreateRecord = async (
         newStatus
       );
 
-      if (newStatus === "Completed") {
-  clearLocalVehicleStatus(
-    currentRecord.vehicleId
-  );
-
-  setVehicles((currentVehicles) =>
-    currentVehicles.map((vehicle) =>
-      vehicle.id === currentRecord.vehicleId
-        ? {
-            ...vehicle,
-            status: "Aktif",
-          }
-        : vehicle
-    )
-  );
-} else {
-  setLocalVehicleStatus(
-    currentRecord.vehicleId,
-    "Bakımda"
-  );
-
-  setVehicles((currentVehicles) =>
-    currentVehicles.map((vehicle) =>
-      vehicle.id === currentRecord.vehicleId
-        ? {
-            ...vehicle,
-            status: "Bakımda",
-          }
-        : vehicle
-    )
-  );
-}
-
     setRecords((currentRecords) =>
       currentRecords.map((record) =>
         record.id === recordId
@@ -360,10 +350,21 @@ const handleCreateRecord = async (
       )
     );
 
-    showToast(
-      "Kayıt durumu güncellendi.",
-      "success"
-    );
+    // PATCH işleminden sonra backend araç
+    // durumunu da otomatik değiştirdi.
+    await refreshVehicles();
+
+    if (newStatus === "Completed") {
+      showToast(
+        "Bakım tamamlandı. Araç aktif duruma geçirildi.",
+        "success"
+      );
+    } else {
+      showToast(
+        "Bakım kaydı güncellendi. Araç bakım durumuna geçirildi.",
+        "success"
+      );
+    }
   } catch (error) {
     console.error(
       "Bakım durumu güncellenemedi:",

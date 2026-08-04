@@ -4,6 +4,19 @@ export interface User {
   id: number;
   username: string;
   role: "ADMIN" | "USER";
+  email: string | null;
+  phoneNumber: string | null;
+  createdAt: string | null;
+}
+
+export interface UpdateProfileRequest {
+  email: string;
+  phoneNumber: string;
+}
+
+export interface ChangePasswordRequest {
+  oldPassword: string;
+  newPassword: string;
 }
 
 function getToken(): string {
@@ -91,4 +104,62 @@ export async function getCurrentUser(): Promise<User> {
   }
 
   return response.json();
+}
+
+export async function updateCurrentUserProfile(
+  profileData: UpdateProfileRequest
+): Promise<User> {
+  const token = getToken();
+
+  const response = await fetch(
+    `${BASE_URL}/users/me`,
+    {
+      method: "PUT",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(profileData),
+    }
+  );
+
+  if (!response.ok) {
+    const message = await getErrorMessage(
+      response,
+      "Profil bilgileri güncellenemedi."
+    );
+
+    throw new Error(message);
+  }
+
+  return response.json();
+}
+
+export async function changeCurrentUserPassword(
+  passwordData: ChangePasswordRequest
+): Promise<void> {
+  const token = getToken();
+
+  const response = await fetch(
+    `${BASE_URL}/users/me/password`,
+    {
+      method: "PUT",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(passwordData),
+    }
+  );
+
+  if (!response.ok) {
+    const message = await getErrorMessage(
+      response,
+      "Şifre değiştirilemedi."
+    );
+
+    throw new Error(message);
+  }
 }

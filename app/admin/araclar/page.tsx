@@ -16,9 +16,6 @@ import {
   type Vehicle,
 } from "../../../api/services/vehicleService";
 
-import {
-  applyLocalVehicleStatus,
-} from "../../utils/VehicleStatus";
 
 type IconProps = SVGProps<SVGSVGElement>;
 
@@ -41,6 +38,8 @@ export default function AdminVehiclesPage() {
     number | null
   >(null);
 
+  
+
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -60,10 +59,8 @@ export default function AdminVehiclesPage() {
         }
 
         if (!isCancelled) {
-          setVehicles(
-  data.map(applyLocalVehicleStatus)
-);
-        }
+  setVehicles(data);
+}
       } catch (error) {
         console.error("Araç yükleme hatası:", error);
 
@@ -103,9 +100,8 @@ export default function AdminVehiclesPage() {
         );
       }
 
-      setVehicles(
-  data.map(applyLocalVehicleStatus)
-);
+      setVehicles(data);
+      
     } catch (error) {
       console.error("Araç yükleme hatası:", error);
 

@@ -20,7 +20,10 @@ type ApiVehicle = {
 
 type ApiMaintenanceRecord = {
   id: number;
-  vehicle: ApiVehicle;
+
+  // Araç silinmişse backend null döndürebilir.
+  vehicle: ApiVehicle | null;
+
   title: string;
   description: string;
   reportDate: string;
@@ -99,12 +102,20 @@ function mapMaintenanceRecord(
 ): MaintenanceRecord {
   return {
     id: record.id,
-    vehicleId: record.vehicle.id,
-    licensePlate: record.vehicle.licensePlate,
-    makeModel: record.vehicle.makeModel,
-    title: record.title,
-    description: record.description,
-    reportedDate: record.reportDate,
+
+    // Araç silinmişse hata vermek yerine varsayılan değerler kullanılır.
+    vehicleId: record.vehicle?.id ?? 0,
+
+    licensePlate:
+      record.vehicle?.licensePlate ?? "Silinmiş araç",
+
+    makeModel:
+      record.vehicle?.makeModel ??
+      "Araç bilgisi bulunamadı",
+
+    title: record.title ?? "",
+    description: record.description ?? "",
+    reportedDate: record.reportDate ?? "",
     status: toFrontendStatus(record.status),
   };
 }
@@ -116,18 +127,15 @@ async function getErrorMessage(
   try {
     const data = await response.json();
 
-    return (
-      data.message ||
-      data.error ||
-      defaultMessage
-    );
+    return data.message || data.error || defaultMessage;
   } catch {
     return defaultMessage;
   }
 }
 
-export async function getMaintenanceRecords():
-Promise<MaintenanceRecord[]> {
+export async function getMaintenanceRecords(): Promise<
+  MaintenanceRecord[]
+> {
   const token = getToken();
 
   const response = await fetch(

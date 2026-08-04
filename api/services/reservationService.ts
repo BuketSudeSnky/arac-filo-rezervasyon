@@ -30,6 +30,12 @@ export interface ReservationRequest {
 }
 
 function getToken(): string {
+  if (typeof window === "undefined") {
+    throw new Error(
+      "Bu işlem yalnızca tarayıcıda yapılabilir."
+    );
+  }
+
   const token = localStorage.getItem("token");
 
   if (!token) {
@@ -42,29 +48,45 @@ function getToken(): string {
 }
 
 async function getErrorMessage(
-  response: Response
+  response: Response,
+  defaultMessage = "İşlem başarısız."
 ): Promise<string> {
   try {
     const data = await response.json();
 
-    return data.message || data.error || "İşlem başarısız.";
+    return (
+      data.message ||
+      data.error ||
+      defaultMessage
+    );
   } catch {
-    return "İşlem başarısız.";
+    return defaultMessage;
   }
 }
 
-export async function getReservations(): Promise<Reservation[]> {
+export async function getReservations(): Promise<
+  Reservation[]
+> {
   const token = getToken();
 
-  const response = await fetch(`${BASE_URL}/reservations`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await fetch(
+    `${BASE_URL}/reservations`,
+    {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
 
   if (!response.ok) {
-    throw new Error(await getErrorMessage(response));
+    throw new Error(
+      await getErrorMessage(
+        response,
+        "Rezervasyonlar getirilemedi."
+      )
+    );
   }
 
   return response.json();
@@ -75,17 +97,26 @@ export async function createReservation(
 ): Promise<Reservation> {
   const token = getToken();
 
-  const response = await fetch(`${BASE_URL}/reservations`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(reservation),
-  });
+  const response = await fetch(
+    `${BASE_URL}/reservations`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(reservation),
+    }
+  );
 
   if (!response.ok) {
-    throw new Error(await getErrorMessage(response));
+    throw new Error(
+      await getErrorMessage(
+        response,
+        "Rezervasyon oluşturulamadı."
+      )
+    );
   }
 
   return response.json();
@@ -102,6 +133,7 @@ export async function updateReservationStatus(
     {
       method: "PATCH",
       headers: {
+        Accept: "application/json",
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
@@ -110,7 +142,12 @@ export async function updateReservationStatus(
   );
 
   if (!response.ok) {
-    throw new Error(await getErrorMessage(response));
+    throw new Error(
+      await getErrorMessage(
+        response,
+        "Rezervasyon durumu güncellenemedi."
+      )
+    );
   }
 
   return response.json();
@@ -126,13 +163,19 @@ export async function cancelReservation(
     {
       method: "PATCH",
       headers: {
+        Accept: "application/json",
         Authorization: `Bearer ${token}`,
       },
     }
   );
 
   if (!response.ok) {
-    throw new Error(await getErrorMessage(response));
+    throw new Error(
+      await getErrorMessage(
+        response,
+        "Rezervasyon iptal edilemedi."
+      )
+    );
   }
 
   return response.json();
@@ -154,13 +197,19 @@ export async function getAvailableVehicles(
     {
       method: "GET",
       headers: {
+        Accept: "application/json",
         Authorization: `Bearer ${token}`,
       },
     }
   );
 
   if (!response.ok) {
-    throw new Error(await getErrorMessage(response));
+    throw new Error(
+      await getErrorMessage(
+        response,
+        "Müsait araçlar getirilemedi."
+      )
+    );
   }
 
   return response.json();
