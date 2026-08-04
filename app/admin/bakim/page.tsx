@@ -273,6 +273,27 @@ const handleCreateRecord = async (
       createdRecord,
       ...currentRecords,
     ]);
+setRecords((currentRecords) => [
+  createdRecord,
+  ...currentRecords,
+]);
+
+setNewRecord({
+  vehicleId: "",
+  licensePlate: "",
+  makeModel: "",
+  title: "",
+  description: "",
+  reportedDate: "",
+  status: "Reported",
+});
+
+setShowCreateForm(false);
+
+showToast(
+  "Bakım kaydı başarıyla oluşturuldu.",
+  "success"
+);
 
     setNewRecord({
       vehicleId: "",

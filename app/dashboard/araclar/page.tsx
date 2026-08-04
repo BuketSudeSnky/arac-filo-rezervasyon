@@ -17,6 +17,19 @@ import {
 
 
 type IconProps = SVGProps<SVGSVGElement>;
+function getVehicleImage(
+  licensePlate: string
+) {
+  if (!licensePlate) {
+    return "/images/vehicles/default-car.jpg";
+  }
+
+  const plate = licensePlate
+    .replace(/\s+/g, "")
+    .toUpperCase();
+
+  return `/images/vehicles/${plate}.jpg`;
+}
 
 export default function DashboardAraclarPage() {
   const [araclar, setAraclar] = useState<Vehicle[]>([]);
@@ -45,6 +58,34 @@ export default function DashboardAraclarPage() {
   const today = new Date()
     .toISOString()
     .split("T")[0];
+
+    function VehicleImage({
+  vehicle,
+}: {
+  vehicle: Vehicle;
+}) {
+  const [imageSrc, setImageSrc] =
+    useState(
+      getVehicleImage(vehicle.licensePlate)
+    );
+
+  return (
+    <Image
+      src={imageSrc}
+      alt={vehicle.makeModel}
+      fill
+      sizes="(max-width: 768px) 100vw,
+             (max-width: 1280px) 50vw,
+             33vw"
+      className="object-cover transition duration-300 group-hover:scale-105"
+      onError={() =>
+        setImageSrc(
+          "/images/vehicles/default-car.jpg"
+        )
+      }
+    />
+  );
+}
 
   useEffect(() => {
     let isCancelled = false;
@@ -448,7 +489,7 @@ export default function DashboardAraclarPage() {
                 >
                   <div className="relative h-52 w-full overflow-hidden bg-slate-100">
                     <Image
-                      src="/images/default-car.jpg"
+                      src={getVehicleImage(arac.licensePlate)}
                       alt={arac.makeModel}
                       fill
                       sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
